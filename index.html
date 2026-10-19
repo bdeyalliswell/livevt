@@ -101,31 +101,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease;
+      touch-action: none;
     }
 
-    /* Desktop Miniplayer */
+    /* Draggable Miniplayer */
     .player-box.mini {
       position: fixed;
-      top: auto;
-      left: auto;
-      bottom: 20px;
-      right: 20px;
-      width: 300px;
-      height: 169px;
+      width: 290px;
+      height: 163px;
       z-index: 999;
       border-radius: 10px;
       border: 1px solid var(--accent);
       box-shadow: 0 12px 35px rgba(0,0,0,0.9), 0 0 15px var(--accent-glow);
+      cursor: grab;
+      user-select: none;
+    }
+
+    .player-box.mini:active {
+      cursor: grabbing;
     }
 
     /* Mobile Miniplayer */
     @media (max-width: 600px) {
       .player-box.mini {
-        width: 190px;
-        height: 107px;
-        bottom: 12px;
-        right: 12px;
+        width: 185px;
+        height: 104px;
       }
     }
 
@@ -134,6 +135,7 @@
       height: 100%;
       object-fit: contain;
       background: #000;
+      pointer-events: none; /* Allows easy drag & drop on player surface */
     }
 
     .error-overlay {
@@ -189,6 +191,7 @@
       z-index: 10;
       font-size: 0.78rem;
       font-weight: 600;
+      pointer-events: auto;
     }
 
     .player-controls-bar {
@@ -202,23 +205,39 @@
       justify-content: space-between;
       align-items: center;
       z-index: 10;
+      pointer-events: auto;
     }
 
-    .ctrl-btn {
-      background: rgba(255,255,255,0.18);
-      border: 1px solid rgba(255,255,255,0.25);
+    /* Icon Only Control Buttons */
+    .icon-btn {
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255,255,255,0.22);
       color: #fff;
-      padding: 4px 8px;
-      border-radius: 5px;
-      font-size: 0.7rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
-      backdrop-filter: blur(4px);
+      justify-content: center;
+      backdrop-filter: blur(6px);
+      transition: all 0.2s ease;
     }
 
-    .ctrl-btn:hover { background: var(--accent); color: #000; }
+    .icon-btn svg {
+      width: 17px;
+      height: 17px;
+      fill: #fff;
+    }
+
+    .icon-btn:hover { 
+      background: var(--accent); 
+      border-color: var(--accent);
+    }
+    
+    .icon-btn:hover svg {
+      fill: #000;
+    }
 
     .close-btn {
       background: rgba(255,255,255,0.25);
@@ -288,7 +307,7 @@
       width: 100%;
     }
 
-    /* Tight Compact Grid - Zero Extra Dead Space */
+    /* Tight Compact Grid */
     .catalog-wrapper {
       padding: 0.4rem 0.8rem;
       flex: 1;
@@ -336,7 +355,6 @@
       box-shadow: 0 0 10px var(--accent-glow);
     }
 
-    /* Logo - Compact & Borderless */
     .logo-box {
       width: 100%;
       height: 34px;
@@ -356,7 +374,6 @@
       filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));
     }
 
-    /* Small Channel Title */
     .channel-name {
       font-size: 0.72rem;
       font-weight: 600;
@@ -447,8 +464,15 @@
         </div>
 
         <div class="player-controls-bar">
-          <button class="ctrl-btn" id="muteBtn" onclick="toggleMute()">🔇 Unmute</button>
-          <button class="ctrl-btn" onclick="toggleFullScreen()">⛶ Fullscreen</button>
+          <!-- Icon-Only Mute/Unmute -->
+          <button class="icon-btn" id="muteBtn" onclick="toggleMute()" title="Mute/Unmute">
+            <svg id="muteIcon" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+          </button>
+
+          <!-- Icon-Only Fullscreen -->
+          <button class="icon-btn" onclick="toggleFullScreen()" title="Fullscreen">
+            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -475,6 +499,10 @@
     let currentPage = 1;
     let hls = null;
     let activeChannel = null;
+
+    // SVG icon constants
+    const ICON_MUTED = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+    const ICON_UNMUTED = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
 
     async function init() {
       const statEl = document.getElementById('stat-counter');
@@ -645,7 +673,7 @@
       renderGrid();
 
       video.muted = true;
-      document.getElementById('muteBtn').innerText = "🔇 Unmute";
+      document.getElementById('muteIcon').innerHTML = ICON_MUTED;
 
       let streamUrl = ch.url;
       if (useProxy) {
@@ -690,7 +718,7 @@
     function toggleMute() {
       const video = document.getElementById('tvPlayer');
       video.muted = !video.muted;
-      document.getElementById('muteBtn').innerText = video.muted ? "🔇 Unmute" : "🔊 Mute";
+      document.getElementById('muteIcon').innerHTML = video.muted ? ICON_MUTED : ICON_UNMUTED;
     }
 
     function toggleFullScreen() {
@@ -708,6 +736,7 @@
     function closePlayer() {
       const playerBox = document.getElementById('mainPlayerBox');
       playerBox.classList.remove('mini');
+      resetMiniplayerPos();
       const video = document.getElementById('tvPlayer');
       if (hls) {
         hls.destroy();
@@ -721,17 +750,96 @@
       renderGrid();
     }
 
+    /* Scroll Listener: Normal to Miniplayer */
     window.addEventListener('scroll', () => {
       const anchor = document.getElementById('playerAnchor');
       const playerBox = document.getElementById('mainPlayerBox');
       const rect = anchor.getBoundingClientRect();
 
       if (rect.bottom < 60 && activeChannel) {
-        playerBox.classList.add('mini');
+        if (!playerBox.classList.contains('mini')) {
+          playerBox.classList.add('mini');
+          // Default position when entering mini mode
+          if (!playerBox.dataset.customPos) {
+            playerBox.style.bottom = '20px';
+            playerBox.style.right = '20px';
+            playerBox.style.top = 'auto';
+            playerBox.style.left = 'auto';
+          }
+        }
       } else {
-        playerBox.classList.remove('mini');
+        if (playerBox.classList.contains('mini')) {
+          playerBox.classList.remove('mini');
+          resetMiniplayerPos();
+        }
       }
     }, { passive: true });
+
+    /* Draggable Miniplayer Implementation (Mouse & Touch) */
+    const playerBox = document.getElementById('mainPlayerBox');
+    let isDragging = false;
+    let startX, startY, initLeft, initTop;
+
+    function resetMiniplayerPos() {
+      playerBox.style.top = '';
+      playerBox.style.left = '';
+      playerBox.style.bottom = '';
+      playerBox.style.right = '';
+      delete playerBox.dataset.customPos;
+    }
+
+    function onDragStart(e) {
+      if (!playerBox.classList.contains('mini')) return;
+      if (e.target.closest('.icon-btn') || e.target.closest('.close-btn') || e.target.closest('.retry-btn')) return;
+
+      isDragging = true;
+      const point = e.touches ? e.touches[0] : e;
+      startX = point.clientX;
+      startY = point.clientY;
+
+      const rect = playerBox.getBoundingClientRect();
+      initLeft = rect.left;
+      initTop = rect.top;
+
+      playerBox.style.bottom = 'auto';
+      playerBox.style.right = 'auto';
+      playerBox.style.left = `${initLeft}px`;
+      playerBox.style.top = `${initTop}px`;
+      playerBox.dataset.customPos = 'true';
+    }
+
+    function onDragMove(e) {
+      if (!isDragging) return;
+      e.preventDefault();
+      const point = e.touches ? e.touches[0] : e;
+      const dx = point.clientX - startX;
+      const dy = point.clientY - startY;
+
+      let newLeft = initLeft + dx;
+      let newTop = initTop + dy;
+
+      // Keep inside screen bounds
+      const maxLeft = window.innerWidth - playerBox.offsetWidth - 8;
+      const maxTop = window.innerHeight - playerBox.offsetHeight - 8;
+
+      newLeft = Math.max(8, Math.min(newLeft, maxLeft));
+      newTop = Math.max(8, Math.min(newTop, maxTop));
+
+      playerBox.style.left = `${newLeft}px`;
+      playerBox.style.top = `${newTop}px`;
+    }
+
+    function onDragEnd() {
+      isDragging = false;
+    }
+
+    playerBox.addEventListener('mousedown', onDragStart);
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragEnd);
+
+    playerBox.addEventListener('touchstart', onDragStart, { passive: false });
+    window.addEventListener('touchmove', onDragMove, { passive: false });
+    window.addEventListener('touchend', onDragEnd);
 
     document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('catFilter').addEventListener('change', applyFilters);
