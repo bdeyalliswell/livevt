@@ -3,855 +3,551 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>bdeytv-live — Premium Live TV Streaming</title>
-  <link rel="icon" type="image/png" href="logo.png" onerror="this.href='https://placehold.co/64x64/090d16/00f0ff?text=TV'">
-
-  <!-- Google Fonts: Inter -->
+  <title>bdeytv-live — Premium Live TV</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              cyan: '#00f0ff',
-              violet: '#7928ca',
-              pink: '#ff007a',
-              dark: '#07090e',
-              card: '#0f1422',
-              cardBorder: '#1e293b'
-            }
-          },
-          animation: {
-            'pulse-glow': 'pulseGlow 2.5s infinite',
-          },
-          keyframes: {
-            pulseGlow: {
-              '0%, 100%': { boxShadow: '0 0 15px rgba(0, 240, 255, 0.4)' },
-              '50%': { boxShadow: '0 0 25px rgba(121, 40, 202, 0.6)' },
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- HLS.js for Live m3u8 Playback -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* Glassmorphism & Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+    :root {
+      --bg: #090c15;
+      --card-bg: rgba(18, 24, 40, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #00f2fe;
+      --accent-glow: rgba(0, 242, 254, 0.35);
+      --text: #f8fafc;
+      --muted: #94a3b8;
     }
-    ::-webkit-scrollbar-track {
-      background: #090d16;
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      background-image: radial-gradient(circle at 15% 15%, rgba(0, 242, 254, 0.06), transparent 30%),
+                        radial-gradient(circle at 85% 85%, rgba(79, 70, 229, 0.08), transparent 30%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #1e293b;
-      border-radius: 9999px;
+
+    header {
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(9, 12, 21, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
     }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #00f0ff;
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      text-decoration: none;
+      color: inherit;
     }
-    .glass-nav {
-      background: rgba(10, 14, 26, 0.82);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+
+    .brand img {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--card-border);
+      background: #111;
     }
-    .glass-card {
-      background: rgba(15, 20, 34, 0.7);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+
+    .brand-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .filter-panel {
+      padding: 1.2rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .search-box {
+      flex: 1 1 240px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 0.7rem 1rem 0.7rem 2.5rem;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      fill: var(--muted);
+    }
+
+    .select-dropdown {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .select-dropdown:focus {
+      border-color: var(--accent);
+    }
+
+    /* 5x20 Grid Layout */
+    .catalog-wrapper {
+      padding: 1rem 2rem;
+      flex: 1;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 1200px) { .grid-container { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 900px) { .grid-container { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 650px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 420px) { .grid-container { grid-template-columns: 1fr; } }
+
+    .channel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .channel-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 10px 25px rgba(0, 242, 254, 0.15);
+    }
+
+    .channel-card.active-card {
+      border-color: var(--accent);
+      background: rgba(0, 242, 254, 0.08);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .logo-box {
+      width: 100%;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      margin-bottom: 0.85rem;
+      overflow: hidden;
+      padding: 0.5rem;
+    }
+
+    .logo-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .channel-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      margin-bottom: 0.4rem;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Pagination */
+    .pagination-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 2.5rem 1rem;
+    }
+
+    .pg-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .pg-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    /* Floating Miniplayer */
+    .miniplayer-wrapper {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      width: 380px;
+      max-width: calc(100vw - 40px);
+      background: #000;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--accent);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px var(--accent-glow);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+    }
+
+    .miniplayer-wrapper.active {
+      display: flex;
+    }
+
+    .miniplayer-header {
+      background: rgba(18, 24, 40, 0.9);
+      padding: 0.55rem 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .btn-close {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .video-viewport {
+      position: relative;
+      width: 100%;
+      height: 215px;
+      background: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .unmute-banner {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(5px);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.15);
     }
   </style>
 </head>
-<body class="bg-[#07090e] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-brand-cyan selection:text-black">
+<body>
 
-  <!-- ================= TOP NAVIGATION BAR ================= -->
-  <header class="sticky top-0 z-40 w-full glass-nav border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-all duration-300">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-      
-      <!-- Brand Logo & Name -->
-      <a href="#" class="flex items-center gap-3 group">
-        <div class="relative w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-tr from-brand-violet to-brand-cyan p-[2px] transition-transform duration-300 group-hover:scale-105 shadow-lg shadow-brand-cyan/20">
-          <div class="w-full h-full bg-[#090d16] rounded-[10px] flex items-center justify-center overflow-hidden">
-            <img src="logo.png" alt="bdeytv-live logo" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/80x80/090d16/00f0ff?text=BDEY';">
-          </div>
-        </div>
-        <div>
-          <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-brand-cyan via-white to-brand-violet bg-clip-text text-transparent">bdeytv-live</span>
-          <span class="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 uppercase tracking-widest">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live Streams
-          </span>
-        </div>
-      </a>
-
-      <!-- Quick Action Buttons -->
-      <div class="flex items-center gap-2.5">
-        <button id="automationModalBtn" class="flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/70 text-slate-300 hover:text-brand-cyan transition-all">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          <span class="hidden sm:inline">Auto Updater info</span>
-        </button>
-        <button id="importDataBtn" class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-gradient-to-r from-brand-cyan to-brand-violet text-black hover:opacity-90 shadow-md shadow-brand-cyan/20 transition-all">
-          <i data-lucide="link-2" class="w-3.5 h-3.5"></i>
-          <span class="hidden sm:inline">Load Source</span>
-        </button>
-      </div>
-
-    </div>
+  <header>
+    <a href="#" class="brand">
+      <img src="logo.png" onerror="this.src='https://via.placeholder.com/48/00f2fe/000?text=TV'" alt="logo">
+      <div class="brand-title">bdeytv-live</div>
+    </a>
+    <div id="stat-counter" style="font-size: 0.8rem; color: var(--muted);">Loading channels...</div>
   </header>
 
-  <!-- ================= HERO & FILTERS BAR ================= -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 flex flex-col gap-6">
+  <section class="filter-panel">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z"/></svg>
+      <input type="text" id="searchInput" placeholder="Search channels...">
+    </div>
+    <select id="countryFilter" class="select-dropdown"><option value="">All Countries</option></select>
+    <select id="langFilter" class="select-dropdown"><option value="">All Languages</option></select>
+    <select id="catFilter" class="select-dropdown"><option value="">All Genres</option></select>
+  </section>
 
-    <!-- Search & Filter Controls Card -->
-    <section class="glass-card border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-xl">
-      <div class="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-        
-        <!-- Live Search Input -->
-        <div class="relative flex-1">
-          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-          <input 
-            type="text" 
-            id="searchInput" 
-            placeholder="Search channels by name, keyword or country..." 
-            class="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-900/90 border border-slate-700/70 text-sm placeholder-slate-500 focus:outline-none focus:border-brand-cyan focus:ring-1 focus:ring-brand-cyan transition-all"
-          >
-          <button id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
-            <i data-lucide="x" class="w-3.5 h-3.5"></i>
-          </button>
-        </div>
-
-        <!-- Filter Dropdowns Container -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <!-- Category / Genre -->
-          <select id="categoryFilter" class="bg-slate-900/90 border border-slate-700/70 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-brand-cyan transition-all">
-            <option value="ALL">All Categories</option>
-          </select>
-
-          <!-- Country -->
-          <select id="countryFilter" class="bg-slate-900/90 border border-slate-700/70 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-brand-cyan transition-all">
-            <option value="ALL">All Countries</option>
-          </select>
-
-          <!-- Language -->
-          <select id="languageFilter" class="col-span-2 sm:col-span-1 bg-slate-900/90 border border-slate-700/70 text-xs text-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-brand-cyan transition-all">
-            <option value="ALL">All Languages</option>
-          </select>
-        </div>
-
-        <!-- Reset Button -->
-        <button id="resetFiltersBtn" title="Reset all filters" class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-700/70 bg-slate-800/50 hover:bg-slate-700 text-xs text-slate-300 transition-all">
-          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-          <span>Reset</span>
-        </button>
-
-      </div>
-
-      <!-- Stats Bar & Quick Badges -->
-      <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-        <div class="flex items-center gap-2">
-          <span id="channelCountInfo" class="font-medium text-slate-200">Loading channels...</span>
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-          <span class="text-emerald-400 font-medium">Verified Stream Ready</span>
-        </div>
-        <div class="text-[11px] text-slate-400">
-          Showing <span class="text-brand-cyan font-semibold">5 × 20</span> (100 channels/page)
-        </div>
-      </div>
-    </section>
-
-    <!-- ================= CHANNELS GRID (5 x 20) ================= -->
-    <section>
-      <!-- Loading Skeleton / Empty State -->
-      <div id="gridStateNotice" class="hidden text-center py-20 bg-slate-900/30 rounded-2xl border border-slate-800/80">
-        <i data-lucide="tv-2" class="w-12 h-12 text-slate-600 mx-auto mb-3"></i>
-        <h3 class="text-base font-semibold text-slate-300">No active channels found</h3>
-        <p class="text-xs text-slate-500 mt-1">Try adjusting your search criteria or resetting filters.</p>
-      </div>
-
-      <!-- 5-Columns Grid on Desktop -->
-      <div id="channelGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-        <!-- Injected via JavaScript -->
-      </div>
-    </section>
-
-    <!-- ================= PAGINATION CONTROLS ================= -->
-    <nav id="paginationNav" aria-label="Pagination" class="flex flex-wrap items-center justify-center gap-2 py-6"></nav>
-
+  <main class="catalog-wrapper">
+    <div id="channelGrid" class="grid-container"></div>
+    <div id="pagination" class="pagination-bar"></div>
   </main>
 
-  <!-- ================= FLOATING MINI-PLAYER (BOTTOM RIGHT) ================= -->
-  <!-- Requirements: Starts muted by default, sleek floating miniplayer with ONLY a close (X) button -->
-  <div id="miniPlayerContainer" class="fixed bottom-4 right-4 z-50 w-[320px] sm:w-[380px] bg-slate-950/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-300 transform translate-y-3 opacity-0 pointer-events-none">
-    
-    <!-- Header with Channel Info & Close (X) Button ONLY -->
-    <div class="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-      <div class="flex items-center gap-2 overflow-hidden pr-2">
-        <span class="relative flex h-2 w-2">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-        </span>
-        <span id="playerChannelTitle" class="text-xs font-semibold text-slate-200 truncate">Select a Channel</span>
-      </div>
-
-      <!-- Close Button Only -->
-      <button id="closeMiniPlayerBtn" title="Close Miniplayer" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
+  <!-- Floating Miniplayer with ONLY (X) button -->
+  <div id="miniplayer" class="miniplayer-wrapper">
+    <div class="miniplayer-header">
+      <span id="playingTitle">Live Stream</span>
+      <button class="btn-close" onclick="closePlayer()" title="Close Player">&times;</button>
     </div>
-
-    <!-- Video Element Box -->
-    <div class="relative bg-black aspect-video flex items-center justify-center group overflow-hidden">
-      <!-- Muted live video player -->
-      <video id="liveVideo" class="w-full h-full object-contain" playsinline muted autoplay></video>
-
-      <!-- Player Loading Overlay -->
-      <div id="playerLoadingSpinner" class="hidden absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2">
-        <div class="w-7 h-7 border-2 border-brand-cyan border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-[11px] text-slate-300">Connecting live stream...</span>
-      </div>
-
-      <!-- Error / CORS Notice Overlay -->
-      <div id="playerErrorOverlay" class="hidden absolute inset-0 bg-slate-950/95 p-3 flex flex-col items-center justify-center text-center">
-        <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-400 mb-1"></i>
-        <p class="text-xs font-medium text-slate-200">Stream Unavailable or Blocked by CORS</p>
-        <span class="text-[10px] text-slate-400 mt-1">Provider may restrict direct browser streaming.</span>
-        <button id="retryPlayerBtn" class="mt-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs rounded-md text-brand-cyan transition-all">
-          Retry
-        </button>
-      </div>
-
-      <!-- Unmute Overlay Banner -->
-      <div id="unmuteOverlay" class="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/80 border border-slate-700/80 text-[11px] text-slate-200 cursor-pointer hover:bg-brand-cyan hover:text-black transition-all">
-        <i data-lucide="volume-x" class="w-3.5 h-3.5" id="unmuteIcon"></i>
-        <span id="unmuteLabel">Click to unmute</span>
-      </div>
-    </div>
-
-    <!-- Mini Bottom Info Bar -->
-    <div class="px-3 py-2 bg-slate-900/60 text-[11px] text-slate-400 flex items-center justify-between">
-      <span id="playerMetaBadge" class="truncate">Live HLS Stream</span>
-      <span class="text-[10px] font-mono text-emerald-400 uppercase tracking-wider">HLS 720p/1080p</span>
-    </div>
-  </div>
-
-  <!-- ================= AUTOMATION & INSTRUCTIONS MODAL ================= -->
-  <div id="automationModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-brand-cyan/20 flex items-center justify-center text-brand-cyan">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-          </div>
-          <h2 class="text-base font-bold text-slate-100">Daily Automated Active Channel Filtering</h2>
-        </div>
-        <button id="closeAutomationModal" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <div class="text-xs text-slate-300 leading-relaxed space-y-3">
-        <p>
-          <strong class="text-brand-cyan">কেন GitHub Actions প্রয়োজন?</strong><br>
-          <code class="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded">iptv-org/iptv</code> এর মূল লিস্টে ৫০,০০০+ চ্যানেল থাকে। সরাসরি ব্রাউজারে সব লিংক চেক করলে CORS ও স্পিডের কারণে ব্রাউজার ক্র্যাশ করবে। তাই ব্যাকএন্ডে একটি স্ক্রিপ্ট স্বয়ংক্রিয়ভাবে প্রতিদিন লিংক যাচাই করে একটিভ চ্যানেলের <code class="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded">channels.json</code> তৈরি করে।
-        </p>
-
-        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-          <span class="text-emerald-400 font-semibold block mb-1">GitHub Action সেটআপ করার ৩টি সহজ ধাপ:</span>
-          <ol class="list-decimal list-inside space-y-1 text-slate-400">
-            <li>আপনার GitHub রিপোজিটরিতে <code class="text-slate-200">.github/workflows/update.yml</code> ফাইল তৈরি করুন।</li>
-            <li>পাইথন স্ক্রিপ্ট প্রতিদিন নির্ধারিত সময়ে লাইভ M3U ডাউনলোড ও মাল্টিথ্রেডিং দিয়ে পিং করবে।</li>
-            <li>যেসব চ্যানেল HTTP 200 রেসপন্স দেয়, শুধু সেগুলো দিয়ে <code class="text-brand-cyan">channels.json</code> অটো-কমিট করে দেবে।</li>
-          </ol>
-        </div>
-
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Custom JSON or M3U Playlist URL লোড করতে চান?</label>
-          <div class="flex gap-2">
-            <input id="customSourceInput" type="text" placeholder="https://raw.githubusercontent.com/.../channels.json" class="flex-1 bg-slate-950 border border-slate-700 px-3 py-2 rounded-lg text-xs text-white focus:outline-none focus:border-brand-cyan">
-            <button id="loadCustomSourceBtn" class="px-3.5 py-2 bg-brand-cyan text-black font-semibold rounded-lg text-xs hover:opacity-90">Load</button>
-          </div>
-        </div>
+    <div class="video-viewport">
+      <video id="tvPlayer" playsinline></video>
+      <div id="unmuteAlert" class="unmute-banner" onclick="toggleMute()">
+        <span id="muteLabel">🔇 Click to Unmute</span>
       </div>
     </div>
   </div>
 
-  <!-- ================= FOOTER ================= -->
-  <footer class="mt-auto border-t border-slate-800/80 bg-[#090d16] py-6 px-4">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-slate-300">bdeytv-live</span>
-        <span>&bull;</span>
-        <span>Automated Active IPTV Player Engine</span>
-      </div>
-      <div>Designed for 24/7 uninterrupted live streaming</div>
-    </div>
-  </footer>
-
-  <!-- ================= LOGIC SCRIPT ================= -->
   <script>
-    /*
-      =======================================================
-      1. BUILT-IN ACTIVE CHANNELS CATALOG (Out-of-the-box Ready)
-      =======================================================
-      Populated with verified regional, news, entertainment, and sports streams
-      supporting HLS, plus seamless fallback to 'channels.json'.
-    */
-    const FALLBACK_DEFAULT_LOGO = 'logo.png';
-    const ITEMS_PER_PAGE = 100; // 5 columns x 20 rows
-
-    // Curated high-availability verified streams
-    const DEFAULT_CATALOG = [
-      // Bengali / Regional
-      { id: "b1", name: "Somoy TV", category: "News", country: "Bangladesh", language: "Bengali", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/d/d4/Somoy_TV_logo.svg/320px-Somoy_TV_logo.svg.png", url: "https://live-somoytv.b-cdn.net/somoy-hls/live.m3u8" },
-      { id: "b2", name: "Jamuna TV Live", category: "News", country: "Bangladesh", language: "Bengali", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/8/87/Jamuna_Television_logo.svg/320px-Jamuna_Television_logo.svg.png", url: "https://live-jamunatv.b-cdn.net/jamunatv/live.m3u8" },
-      { id: "b3", name: "Independent TV", category: "News", country: "Bangladesh", language: "Bengali", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/1/15/Independent_Television_logo.svg/320px-Independent_Television_logo.svg.png", url: "https://live.itvbd.com/live/itv/playlist.m3u8" },
-      { id: "b4", name: "Channel 24 BD", category: "News", country: "Bangladesh", language: "Bengali", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/Channel_24_logo.svg/320px-Channel_24_logo.svg.png", url: "https://live.channel24bd.tv/live/channel24/playlist.m3u8" },
-      { id: "b5", name: "Kolkata TV", category: "News", country: "India", language: "Bengali", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/0/00/Kolkata_TV_logo.png/320px-Kolkata_TV_logo.png", url: "https://stream.kolkatatv.org/live/kolkatatv.m3u8" },
-      { id: "b6", name: "News 18 Bangla", category: "News", country: "India", language: "Bengali", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/8/88/News18_Bangla_Logo.svg/320px-News18_Bangla_Logo.svg.png", url: "https://n18livebangla.akamaized.net/hls/live/2037042/n18livebangla/master.m3u8" },
-      
-      // Global English News & Entertainment
-      { id: "g1", name: "Al Jazeera English", category: "News", country: "Qatar", language: "English", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Al_Jazeera_English_logo.svg/320px-Al_Jazeera_English_logo.svg.png", url: "https://live-hls-web-aje.getaj.net/AJE/03.m3u8" },
-      { id: "g2", name: "DW English HD", category: "News", country: "Germany", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/320px-Deutsche_Welle_symbol_2012.svg.png", url: "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8" },
-      { id: "g3", name: "France 24 English", category: "News", country: "France", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/France_24_logo.svg/320px-France_24_logo.svg.png", url: "https://static.france24.com/live/F24_EN_LO_HLS/live_tv.m3u8" },
-      { id: "g4", name: "Euronews English", category: "News", country: "Europe", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Euronews_logo_2016.svg/320px-Euronews_logo_2016.svg.png", url: "https://euronews-euronews-world-1-au.samsung.wurl.com/manifest/playlist.m3u8" },
-      { id: "g5", name: "Sky News Live", category: "News", country: "United Kingdom", language: "English", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/0/07/Sky_News_logo_2020.svg/320px-Sky_News_logo_2020.svg.png", url: "https://skynews-skynews-1-gb.samsung.wurl.com/manifest/playlist.m3u8" },
-      { id: "g6", name: "ABC News Live USA", category: "News", country: "United States", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/ABC_News_logo_2021.svg/320px-ABC_News_logo_2021.svg.png", url: "https://content.uplynk.com/channel/3324f2467c41432981e07cd281b94cd8.m3u8" },
-      { id: "g7", name: "Bloomberg TV USA", category: "Business", country: "United States", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Bloomberg_Television_logo.svg/320px-Bloomberg_Television_logo.svg.png", url: "https://bloomberg.com/media-manifest/streams/us.m3u8" },
-      { id: "g8", name: "CNA Singapore 24/7", category: "News", country: "Singapore", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/CNA_%28TV_network%29_logo.svg/320px-CNA_%28TV_network%29_logo.svg.png", url: "https://cna-hls.akamaized.net/hls/live/2017367/cna_hls/master.m3u8" },
-      { id: "g9", name: "NASA TV Public HD", category: "Science", country: "United States", language: "English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/320px-NASA_logo.svg.png", url: "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8" },
-      { id: "g10", name: "Red Bull TV", category: "Sports", country: "Global", language: "English", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Red_Bull_TV_logo.svg/320px-Red_Bull_TV_logo.svg.png", url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8" },
-      { id: "g11", name: "Tastemade Food & Travel", category: "Lifestyle", country: "United States", language: "English", logo: "https://placehold.co/120x80/0f1422/00f0ff?text=Tastemade", url: "https://tastemade-tastemadetv-1-us.samsung.wurl.com/manifest/playlist.m3u8" },
-      { id: "g12", name: "FailArmy Comedy", category: "Entertainment", country: "United States", language: "English", logo: "https://placehold.co/120x80/0f1422/00f0ff?text=FailArmy", url: "https://failarmy-failarmy-1-us.samsung.wurl.com/manifest/playlist.m3u8" },
-      { id: "g13", name: "The Pet Collective", category: "Entertainment", country: "United States", language: "English", logo: "https://placehold.co/120x80/0f1422/00f0ff?text=Pets", url: "https://petcollective-petcollective-1-us.samsung.wurl.com/manifest/playlist.m3u8" },
-      { id: "g14", name: "Rakuten TV Comedy", category: "Movies", country: "Europe", language: "English", logo: "https://placehold.co/120x80/0f1422/00f0ff?text=Comedy+Films", url: "https://rakuten-comedy-1-gb.samsung.wurl.com/manifest/playlist.m3u8" },
-      { id: "g15", name: "Rakuten Action Movies", category: "Movies", country: "Europe", language: "English", logo: "https://placehold.co/120x80/0f1422/00f0ff?text=Action+Movies", url: "https://rakuten-actionmovies-1-gb.samsung.wurl.com/manifest/playlist.m3u8" },
-      
-      // Hindi & South Asian
-      { id: "h1", name: "Aaj Tak Live", category: "News", country: "India", language: "Hindi", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Aaj_Tak_Logo.svg/320px-Aaj_Tak_Logo.svg.png", url: "https://aajtaklive-amd.akamaized.net/hls/live/2014416/aajtak/aajtaklive/master.m3u8" },
-      { id: "h2", name: "NDTV India Live", category: "News", country: "India", language: "Hindi", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/NDTV_India_logo.svg/320px-NDTV_India_logo.svg.png", url: "https://ndtvindiaelemarchana.akamaized.net/hls/live/2003679-b/ndtvindia/live_audio_video_3.m3u8" },
-      { id: "h3", name: "Zee News Live", category: "News", country: "India", language: "Hindi", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Zee_News_logo.svg/320px-Zee_News_logo.svg.png", url: "https://zeenews.akamaized.net/hls/live/2014418/zeenews/master.m3u8" },
-      { id: "h4", name: "India TV 24/7", category: "News", country: "India", language: "Hindi", logo: "https://placehold.co/120x80/0f1422/00f0ff?text=India+TV", url: "https://indiatvnews.akamaized.net/hls/live/2014419/indiatv/master.m3u8" }
-    ];
-
-    // Duplicate entries programmatically to showcase rich 5x20 grid (100 items/page) with full pagination
-    let masterCatalog = [...DEFAULT_CATALOG];
-    const genres = ["News", "Sports", "Movies", "Music", "Kids", "Entertainment", "Documentary", "Tech"];
-    const countries = ["Bangladesh", "India", "United States", "United Kingdom", "Germany", "France", "Global"];
-    const langs = ["Bengali", "English", "Hindi"];
-
-    // Expand mock list for 5x20 demonstration (250+ active streams)
-    for (let i = 1; i <= 240; i++) {
-      const template = DEFAULT_CATALOG[i % DEFAULT_CATALOG.length];
-      const g = genres[i % genres.length];
-      const c = countries[i % countries.length];
-      const l = langs[i % langs.length];
-      masterCatalog.push({
-        id: `stream_${i}`,
-        name: `${template.name} - Ch ${i + 20}`,
-        category: g,
-        country: c,
-        language: l,
-        logo: template.logo,
-        url: template.url
-      });
-    }
-
-    // App State
-    let filteredChannels = [...masterCatalog];
+    const ITEMS_PER_PAGE = 100; // 5x20 Grid
+    let allChannels = [];
+    let filteredChannels = [];
     let currentPage = 1;
-    let currentHls = null;
-    let currentPlayingChannel = null;
+    let hls = null;
+    let activeChannelUrl = "";
+    let isProxyApplied = false;
 
-    // DOM Elements
-    const searchInput = document.getElementById('searchInput');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
-    const categoryFilter = document.getElementById('categoryFilter');
-    const countryFilter = document.getElementById('countryFilter');
-    const languageFilter = document.getElementById('languageFilter');
-    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
-    const channelGrid = document.getElementById('channelGrid');
-    const paginationNav = document.getElementById('paginationNav');
-    const gridStateNotice = document.getElementById('gridStateNotice');
-    const channelCountInfo = document.getElementById('channelCountInfo');
+    async function init() {
+      try {
+        const res = await fetch('channels.json?t=' + Date.now());
+        if (res.ok) {
+          allChannels = await res.json();
+        } else {
+          throw new Error('channels.json not found');
+        }
+      } catch (e) {
+        // Fallback test stream
+        allChannels = [
+          { title: "Red Bull TV Live", logo: "logo.png", country: "US", language: "English", category: "Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/FLN_PB_AND/master.m3u8" }
+        ];
+      }
 
-    // Miniplayer Elements
-    const miniPlayerContainer = document.getElementById('miniPlayerContainer');
-    const liveVideo = document.getElementById('liveVideo');
-    const closeMiniPlayerBtn = document.getElementById('closeMiniPlayerBtn');
-    const playerChannelTitle = document.getElementById('playerChannelTitle');
-    const playerMetaBadge = document.getElementById('playerMetaBadge');
-    const playerLoadingSpinner = document.getElementById('playerLoadingSpinner');
-    const playerErrorOverlay = document.getElementById('playerErrorOverlay');
-    const retryPlayerBtn = document.getElementById('retryPlayerBtn');
-    const unmuteOverlay = document.getElementById('unmuteOverlay');
-    const unmuteIcon = document.getElementById('unmuteIcon');
-    const unmuteLabel = document.getElementById('unmuteLabel');
-
-    // Automation Modal Elements
-    const automationModalBtn = document.getElementById('automationModalBtn');
-    const automationModal = document.getElementById('automationModal');
-    const closeAutomationModal = document.getElementById('closeAutomationModal');
-    const importDataBtn = document.getElementById('importDataBtn');
-    const customSourceInput = document.getElementById('customSourceInput');
-    const loadCustomSourceBtn = document.getElementById('loadCustomSourceBtn');
-
-    // Initialize Application
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      populateFilterOptions();
-      renderPage();
-      attemptLoadExternalChannelsJson(); // Try loading channels.json if user host has it
-    });
-
-    // Populate Filters
-    function populateFilterOptions() {
-      const uniqueCats = ['ALL', ...new Set(masterCatalog.map(c => c.category).filter(Boolean))].sort();
-      const uniqueCountries = ['ALL', ...new Set(masterCatalog.map(c => c.country).filter(Boolean))].sort();
-      const uniqueLangs = ['ALL', ...new Set(masterCatalog.map(c => c.language).filter(Boolean))].sort();
-
-      categoryFilter.innerHTML = uniqueCats.map(cat => `<option value="${cat}">${cat === 'ALL' ? 'All Categories' : cat}</option>`).join('');
-      countryFilter.innerHTML = uniqueCountries.map(co => `<option value="${co}">${co === 'ALL' ? 'All Countries' : co}</option>`).join('');
-      languageFilter.innerHTML = uniqueLangs.map(ln => `<option value="${ln}">${ln === 'ALL' ? 'All Languages' : ln}</option>`).join('');
+      document.getElementById('stat-counter').innerText = `${allChannels.length} Live Channels Ready`;
+      populateFilters();
+      applyFilters();
     }
 
-    // Filter Application
+    function populateFilters() {
+      const countries = new Set(), langs = new Set(), cats = new Set();
+      allChannels.forEach(c => {
+        if (c.country) countries.add(c.country);
+        if (c.language) langs.add(c.language);
+        if (c.category) cats.add(c.category);
+      });
+
+      const fill = (id, set) => {
+        const el = document.getElementById(id);
+        Array.from(set).sort().forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item;
+          opt.innerText = item;
+          el.appendChild(opt);
+        });
+      };
+      fill('countryFilter', countries);
+      fill('langFilter', langs);
+      fill('catFilter', cats);
+    }
+
     function applyFilters() {
-      const query = searchInput.value.toLowerCase().trim();
-      const cat = categoryFilter.value;
-      const co = countryFilter.value;
-      const ln = languageFilter.value;
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const country = document.getElementById('countryFilter').value;
+      const lang = document.getElementById('langFilter').value;
+      const cat = document.getElementById('catFilter').value;
 
-      filteredChannels = masterCatalog.filter(item => {
-        const matchesQuery = !query || 
-          (item.name && item.name.toLowerCase().includes(query)) ||
-          (item.country && item.country.toLowerCase().includes(query)) ||
-          (item.category && item.category.toLowerCase().includes(query));
-
-        const matchesCat = (cat === 'ALL') || (item.category === cat);
-        const matchesCo = (co === 'ALL') || (item.country === co);
-        const matchesLn = (ln === 'ALL') || (item.language === ln);
-
-        return matchesQuery && matchesCat && matchesCo && matchesLn;
+      filteredChannels = allChannels.filter(c => {
+        const matchQ = !q || (c.title && c.title.toLowerCase().includes(q));
+        const matchCountry = !country || c.country === country;
+        const matchLang = !lang || c.language === lang;
+        const matchCat = !cat || c.category === cat;
+        return matchQ && matchCountry && matchLang && matchCat;
       });
 
       currentPage = 1;
-      renderPage();
+      renderGrid();
     }
 
-    // Event Listeners for Filters & Search
-    searchInput.addEventListener('input', () => {
-      clearSearchBtn.classList.toggle('hidden', !searchInput.value);
-      applyFilters();
-    });
+    function renderGrid() {
+      const grid = document.getElementById('channelGrid');
+      grid.innerHTML = "";
 
-    clearSearchBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      clearSearchBtn.classList.add('hidden');
-      applyFilters();
-    });
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      const paged = filteredChannels.slice(start, start + ITEMS_PER_PAGE);
 
-    categoryFilter.addEventListener('change', applyFilters);
-    countryFilter.addEventListener('change', applyFilters);
-    languageFilter.addEventListener('change', applyFilters);
+      paged.forEach(ch => {
+        const card = document.createElement('div');
+        card.className = `channel-card ${ch.url === activeChannelUrl ? 'active-card' : ''}`;
+        card.onclick = () => playStream(ch);
 
-    resetFiltersBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      clearSearchBtn.classList.add('hidden');
-      categoryFilter.value = 'ALL';
-      countryFilter.value = 'ALL';
-      languageFilter.value = 'ALL';
-      applyFilters();
-    });
-
-    // Render Grid & Pagination (5x20 Grid = 100 channels/page)
-    function renderPage() {
-      const total = filteredChannels.length;
-      const totalPages = Math.ceil(total / ITEMS_PER_PAGE) || 1;
-      if (currentPage > totalPages) currentPage = totalPages;
-
-      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-      const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, total);
-      const pageItems = filteredChannels.slice(startIndex, endIndex);
-
-      // Update info banner
-      channelCountInfo.textContent = `Showing ${pageItems.length} of ${total} Active Channels (Page ${currentPage}/${totalPages})`;
-
-      if (pageItems.length === 0) {
-        channelGrid.innerHTML = '';
-        gridStateNotice.classList.remove('hidden');
-        paginationNav.innerHTML = '';
-        lucide.createIcons();
-        return;
-      }
-
-      gridStateNotice.classList.add('hidden');
-
-      // Build cards (5 columns responsive)
-      channelGrid.innerHTML = pageItems.map(channel => {
-        const isCurrent = currentPlayingChannel && currentPlayingChannel.id === channel.id;
-        return `
-          <div 
-            onclick="playStream('${channel.id}')"
-            class="group relative glass-card cursor-pointer rounded-xl p-3 border ${isCurrent ? 'border-brand-cyan ring-1 ring-brand-cyan' : 'border-slate-800/90 hover:border-slate-600'} hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-lg"
-          >
-            <!-- Top Logo & Live Badge -->
-            <div class="relative w-full aspect-[16/10] bg-slate-950/80 rounded-lg p-2.5 flex items-center justify-center overflow-hidden mb-2.5">
-              <img 
-                src="${channel.logo || FALLBACK_DEFAULT_LOGO}" 
-                alt="${channel.name}" 
-                loading="lazy" 
-                class="max-h-full max-w-full object-contain filter drop-shadow group-hover:scale-105 transition-transform duration-300" 
-                onerror="this.onerror=null; this.src='${FALLBACK_DEFAULT_LOGO}'; if(!this.complete){this.src='https://placehold.co/120x80/0f1422/00f0ff?text=TV';}"
-              >
-              
-              <!-- Play overlay trigger on hover -->
-              <div class="absolute inset-0 bg-brand-cyan/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-[1px]">
-                <div class="w-8 h-8 rounded-full bg-brand-cyan text-black flex items-center justify-center shadow-lg shadow-brand-cyan/40">
-                  <i data-lucide="play" class="w-4 h-4 fill-current"></i>
-                </div>
-              </div>
-
-              ${isCurrent ? `
-                <div class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-brand-cyan text-black text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-black animate-ping"></span> Playing
-                </div>
-              ` : `
-                <div class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 text-slate-300 text-[9px] font-medium border border-slate-700/60">
-                  LIVE
-                </div>
-              `}
-            </div>
-
-            <!-- Channel Details -->
-            <div class="flex flex-col gap-1.5">
-              <h3 class="text-xs font-semibold text-slate-100 truncate group-hover:text-brand-cyan transition-colors" title="${channel.name}">
-                ${channel.name}
-              </h3>
-              
-              <!-- Badges: Category, Country, Language -->
-              <div class="flex flex-wrap items-center gap-1">
-                ${channel.category ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-medium">${channel.category}</span>` : ''}
-                ${channel.country ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800/80 text-brand-cyan/90 font-mono">${channel.country}</span>` : ''}
-                ${channel.language ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800/80 text-slate-400">${channel.language}</span>` : ''}
-              </div>
-            </div>
+        card.innerHTML = `
+          <div class="logo-box">
+            <img src="${ch.logo || 'logo.png'}" onerror="this.src='logo.png'" alt="${ch.title}">
+          </div>
+          <div class="channel-name" title="${ch.title}">${ch.title}</div>
+          <div class="badge-row">
+            <span class="badge">${ch.country || 'TV'}</span>
+            <span class="badge">${ch.category || 'General'}</span>
           </div>
         `;
-      }).join('');
-
-      renderPagination(totalPages);
-      lucide.createIcons();
-    }
-
-    // Pagination Renderer
-    function renderPagination(totalPages) {
-      if (totalPages <= 1) {
-        paginationNav.innerHTML = '';
-        return;
-      }
-
-      let buttons = [];
-
-      // Prev Button
-      buttons.push(`
-        <button 
-          onclick="goToPage(${currentPage - 1})" 
-          ${currentPage === 1 ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="hover:bg-slate-700"'} 
-          class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs font-medium text-slate-300 flex items-center gap-1 transition-all"
-        >
-          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Prev
-        </button>
-      `);
-
-      // Page numbers with ellipsis
-      const delta = 2;
-      const range = [];
-      for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-        range.push(i);
-      }
-
-      if (currentPage - delta > 2) range.unshift('...');
-      if (currentPage + delta < totalPages - 1) range.push('...');
-      range.unshift(1);
-      if (totalPages > 1) range.push(totalPages);
-
-      range.forEach(p => {
-        if (p === '...') {
-          buttons.push(`<span class="px-2 py-1 text-slate-500 text-xs font-bold">...</span>`);
-        } else {
-          const isActive = p === currentPage;
-          buttons.push(`
-            <button 
-              onclick="goToPage(${p})" 
-              class="w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
-                isActive 
-                  ? 'bg-gradient-to-tr from-brand-cyan to-brand-violet text-black shadow-lg shadow-brand-cyan/30' 
-                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
-              }"
-            >
-              ${p}
-            </button>
-          `);
-        }
+        grid.appendChild(card);
       });
 
-      // Next Button
-      buttons.push(`
-        <button 
-          onclick="goToPage(${currentPage + 1})" 
-          ${currentPage === totalPages ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="hover:bg-slate-700"'} 
-          class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs font-medium text-slate-300 flex items-center gap-1 transition-all"
-        >
-          Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-        </button>
-      `);
-
-      paginationNav.innerHTML = buttons.join('');
-      lucide.createIcons();
+      renderPagination();
     }
 
-    function goToPage(page) {
+    function renderPagination() {
+      const container = document.getElementById('pagination');
+      container.innerHTML = "";
       const totalPages = Math.ceil(filteredChannels.length / ITEMS_PER_PAGE);
-      if (page >= 1 && page <= totalPages) {
-        currentPage = page;
-        renderPage();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (totalPages <= 1) return;
+
+      const createBtn = (text, page, active = false) => {
+        const btn = document.createElement('button');
+        btn.className = `pg-btn ${active ? 'active' : ''}`;
+        btn.innerText = text;
+        btn.onclick = () => {
+          currentPage = page;
+          renderGrid();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        return btn;
+      };
+
+      if (currentPage > 1) container.appendChild(createBtn('« Prev', currentPage - 1));
+      
+      const maxButtons = 5;
+      let startP = Math.max(1, currentPage - 2);
+      let endP = Math.min(totalPages, startP + maxButtons - 1);
+
+      for (let i = startP; i <= endP; i++) {
+        container.appendChild(createBtn(i, i, i === currentPage));
       }
+
+      if (currentPage < totalPages) container.appendChild(createBtn('Next »', currentPage + 1));
     }
 
-    // ================= LIVE STREAM PLAYER (Hls.js + Muted default) =================
-    window.playStream = function(channelId) {
-      const channel = masterCatalog.find(c => c.id === channelId);
-      if (!channel) return;
+    function playStream(ch, bypassCors = false) {
+      activeChannelUrl = ch.url;
+      const miniplayer = document.getElementById('miniplayer');
+      const video = document.getElementById('tvPlayer');
+      const title = document.getElementById('playingTitle');
 
-      currentPlayingChannel = channel;
-      renderPage(); // refresh playing state indicators
+      miniplayer.classList.add('active');
+      title.innerText = ch.title;
+      renderGrid();
 
-      // Display floating miniplayer
-      miniPlayerContainer.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
-      miniPlayerContainer.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+      video.muted = true; // By default mute
+      document.getElementById('muteLabel').innerText = "🔇 Click to Unmute";
 
-      // Update titles
-      playerChannelTitle.textContent = channel.name;
-      playerMetaBadge.textContent = `${channel.country || 'Global'} • ${channel.category || 'Live'}`;
-
-      // Reset states
-      playerErrorOverlay.classList.add('hidden');
-      playerLoadingSpinner.classList.remove('hidden');
-
-      // Ensure video is muted by default (browser policy requirement)
-      liveVideo.muted = true;
-      updateUnmuteButtonState();
-
-      if (currentHls) {
-        currentHls.destroy();
-        currentHls = null;
+      let streamUrl = ch.url;
+      if (bypassCors) {
+        // CORS Proxy fallback for blocked streams
+        streamUrl = `https://corsproxy.io/?url=${encodeURIComponent(ch.url)}`;
       }
 
-      const streamUrl = channel.url;
+      if (hls) {
+        hls.destroy();
+      }
 
       if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 60
-        });
-
+        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
         hls.loadSource(streamUrl);
-        hls.attachMedia(liveVideo);
+        hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          playerLoadingSpinner.classList.add('hidden');
-          liveVideo.play().catch(e => {
-            console.log("Autoplay prevented:", e);
-          });
+          video.play().catch(() => {});
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
-          console.warn("HLS Event Error:", data);
-          if (data.fatal) {
-            playerLoadingSpinner.classList.add('hidden');
-            playerErrorOverlay.classList.remove('hidden');
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                hls.destroy();
-                break;
-            }
+          if (data.fatal && !bypassCors) {
+            // Auto-retry with CORS Proxy
+            playStream(ch, true);
           }
         });
-
-        currentHls = hls;
-
-      } else if (liveVideo.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native Safari HLS
-        liveVideo.src = streamUrl;
-        liveVideo.addEventListener('loadedmetadata', () => {
-          playerLoadingSpinner.classList.add('hidden');
-          liveVideo.play();
-        });
-        liveVideo.onerror = () => {
-          playerLoadingSpinner.classList.add('hidden');
-          playerErrorOverlay.classList.remove('hidden');
-        };
-      } else {
-        playerLoadingSpinner.classList.add('hidden');
-        playerErrorOverlay.classList.remove('hidden');
-      }
-    };
-
-    // Close Button ONLY on mini-player
-    closeMiniPlayerBtn.addEventListener('click', () => {
-      if (currentHls) {
-        currentHls.destroy();
-        currentHls = null;
-      }
-      liveVideo.pause();
-      liveVideo.removeAttribute('src');
-      liveVideo.load();
-
-      miniPlayerContainer.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
-      miniPlayerContainer.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
-
-      currentPlayingChannel = null;
-      renderPage();
-    });
-
-    // Unmute Button Toggle
-    unmuteOverlay.addEventListener('click', () => {
-      liveVideo.muted = !liveVideo.muted;
-      updateUnmuteButtonState();
-    });
-
-    function updateUnmuteButtonState() {
-      if (liveVideo.muted) {
-        unmuteLabel.textContent = "Click to unmute";
-        unmuteIcon.setAttribute('data-lucide', 'volume-x');
-      } else {
-        unmuteLabel.textContent = "Mute audio";
-        unmuteIcon.setAttribute('data-lucide', 'volume-2');
-      }
-      lucide.createIcons();
-    }
-
-    retryPlayerBtn.addEventListener('click', () => {
-      if (currentPlayingChannel) {
-        window.playStream(currentPlayingChannel.id);
-      }
-    });
-
-    // Automation Modal
-    automationModalBtn.addEventListener('click', () => {
-      automationModal.classList.remove('hidden');
-    });
-    importDataBtn.addEventListener('click', () => {
-      automationModal.classList.remove('hidden');
-    });
-    closeAutomationModal.addEventListener('click', () => {
-      automationModal.classList.add('hidden');
-    });
-
-    // Load External channels.json or custom M3U
-    async function attemptLoadExternalChannelsJson() {
-      try {
-        const response = await fetch('channels.json', { cache: 'no-cache' });
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data) && data.length > 0) {
-            masterCatalog = data;
-            populateFilterOptions();
-            applyFilters();
-            console.log(`Loaded ${data.length} channels from local channels.json`);
-          }
-        }
-      } catch (e) {
-        // Local fallback catalog will remain active seamlessly
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.play().catch(() => {});
       }
     }
 
-    loadCustomSourceBtn.addEventListener('click', async () => {
-      const url = customSourceInput.value.trim();
-      if (!url) return;
-
-      loadCustomSourceBtn.textContent = 'Loading...';
-      try {
-        const res = await fetch(url);
-        const text = await res.text();
-
-        let parsedChannels = [];
-        if (url.endsWith('.json') || text.trim().startsWith('[')) {
-          parsedChannels = JSON.parse(text);
-        } else if (text.includes('#EXTM3U')) {
-          // Simple M3U client parser
-          parsedChannels = parseM3UPlaylist(text);
-        }
-
-        if (parsedChannels.length > 0) {
-          masterCatalog = parsedChannels;
-          populateFilterOptions();
-          applyFilters();
-          automationModal.classList.add('hidden');
-        } else {
-          alert('Could not detect valid channels from this source.');
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        loadCustomSourceBtn.textContent = 'Load';
-      }
-    });
-
-    // Client-side M3U parser fallback
-    function parseM3UPlaylist(m3uContent) {
-      const lines = m3uContent.split('\n');
-      const channels = [];
-      let currentInfo = null;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line.startsWith('#EXTINF:')) {
-          const nameMatch = line.match(/,(.+)$/);
-          const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-          const countryMatch = line.match(/tvg-country="([^"]+)"/);
-          const langMatch = line.match(/tvg-language="([^"]+)"/);
-          const groupMatch = line.match(/group-title="([^"]+)"/);
-
-          currentInfo = {
-            id: `ch_${channels.length + 1}`,
-            name: nameMatch ? nameMatch[1].trim() : `Channel ${channels.length + 1}`,
-            logo: logoMatch ? logoMatch[1] : FALLBACK_DEFAULT_LOGO,
-            country: countryMatch ? countryMatch[1] : 'Global',
-            language: langMatch ? langMatch[1] : 'Unknown',
-            category: groupMatch ? groupMatch[1] : 'General'
-          };
-        } else if (line && !line.startsWith('#') && currentInfo) {
-          currentInfo.url = line;
-          channels.push(currentInfo);
-          currentInfo = null;
-        }
-      }
-      return channels;
+    function toggleMute() {
+      const video = document.getElementById('tvPlayer');
+      video.muted = !video.muted;
+      document.getElementById('muteLabel').innerText = video.muted ? "🔇 Click to Unmute" : "🔊 Sound On";
     }
+
+    function closePlayer() {
+      const miniplayer = document.getElementById('miniplayer');
+      const video = document.getElementById('tvPlayer');
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+      video.pause();
+      video.src = "";
+      miniplayer.classList.remove('active');
+      activeChannelUrl = "";
+      renderGrid();
+    }
+
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('countryFilter').addEventListener('change', applyFilters);
+    document.getElementById('langFilter').addEventListener('change', applyFilters);
+    document.getElementById('catFilter').addEventListener('change', applyFilters);
+
+    window.onload = init;
   </script>
 </body>
 </html>
