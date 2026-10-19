@@ -1,0 +1,39 @@
+name: Update Active IPTV Channels
+
+on:
+  schedule:
+    # প্রতিদিন রাত ১২:০০ টায় (UTC) অটোমেটিক রান হবে
+    - cron: '0 0 * * *'
+  # GitHub ড্যাশবোর্ড থেকে ম্যানুয়ালি রান করার অপশন
+  workflow_dispatch:
+
+jobs:
+  update-channels:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run IPTV Filter Script
+        run: |
+          python updater.py
+
+      - name: Commit and Push Updated Channels
+        run: |
+          git config --global user.name "bdeytv-bot"
+          git config --global user.email "bot@bdeytv-live.local"
+          git add channels.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Automated update: active channels $(date +'%Y-%m-%d %H:%M')" && git push)
