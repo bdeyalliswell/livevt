@@ -92,7 +92,7 @@
       transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Scroll-down to Miniplayer State */
+    /* Miniplayer State on scroll down */
     .player-box.mini {
       position: fixed;
       bottom: 25px;
@@ -366,10 +366,10 @@
       <img src="logo.png" onerror="this.src='logo.png'" alt="logo">
       <div class="brand-title">bdeytv-live</div>
     </a>
-    <div id="stat-counter" style="font-size: 0.8rem; color: var(--muted);">Loading channels...</div>
+    <div id="stat-counter" style="font-size: 0.85rem; color: var(--muted); font-weight: 600;">Loading channels...</div>
   </header>
 
-  <!-- Player Anchor (Keeps layout space when minimized) -->
+  <!-- Main Player Section (Scroll down turns into miniplayer) -->
   <div class="player-anchor" id="playerAnchor">
     <div class="player-box" id="mainPlayerBox">
       <div class="video-container">
@@ -412,29 +412,89 @@
     let activeChannel = null;
 
     async function init() {
+      const statEl = document.getElementById('stat-counter');
+      statEl.innerText = "Loading channels...";
+
+      let dataLoaded = false;
+
+      // 1. First try loading channels.json
       try {
-        const res = await fetch('channels.json?t=' + Date.now());
+        const res = await fetch('channels.json?nocache=' + Date.now());
         if (res.ok) {
-          allChannels = await res.json();
-        } else {
-          throw new Error('channels.json not found');
+          const json = await res.json();
+          if (Array.isArray(json) && json.length > 0) {
+            allChannels = json;
+            dataLoaded = true;
+          }
         }
-      } catch (e) {
-        // Fallback test working streams
+      } catch (err) {
+        console.warn("channels.json not ready, fetching directly from IPTV source...");
+      }
+
+      // 2. If channels.json is not yet available, fallback to IPTV-org directly
+      if (!dataLoaded) {
+        try {
+          statEl.innerText = "Connecting IPTV feed...";
+          const m3uRes = await fetch('https://iptv-org.github.io/iptv/index.m3u');
+          const text = await m3uRes.text();
+          allChannels = parseM3U(text);
+          dataLoaded = true;
+        } catch (e) {
+          console.error("Direct fetch failed", e);
+        }
+      }
+
+      // 3. Fallback sample streams if network blocked
+      if (!allChannels || allChannels.length === 0) {
         allChannels = [
-          { title: "Red Bull TV (Live 24/7)", logo: "logo.png", country: "US", language: "English", category: "Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/FLN_PB_AND/master.m3u8" },
+          { title: "Red Bull TV", logo: "logo.png", country: "US", language: "English", category: "Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/FLN_PB_AND/master.m3u8" },
           { title: "NASA TV HD", logo: "logo.png", country: "US", language: "English", category: "Science", url: "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8" }
         ];
       }
 
-      document.getElementById('stat-counter').innerText = `${allChannels.length} Channels`;
+      statEl.innerText = `${allChannels.length} Live Channels Ready`;
       populateFilters();
       applyFilters();
 
-      // Automatically play the 1st channel by default (muted)
+      // Play 1st channel by default (muted)
       if (allChannels.length > 0) {
         playStream(allChannels[0]);
       }
+    }
+
+    function parseM3U(data) {
+      const lines = data.split('\n');
+      const list = [];
+      let current = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('#EXTINF:')) {
+          current = { title: "TV Channel", logo: "logo.png", country: "Global", language: "General", category: "General" };
+          
+          const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+          if (logoMatch && logoMatch[1]) current.logo = logoMatch[1];
+
+          const groupMatch = line.match(/group-title="([^"]*)"/);
+          if (groupMatch && groupMatch[1]) current.category = groupMatch[1];
+
+          const countryMatch = line.match(/tvg-country="([^"]*)"/);
+          if (countryMatch && countryMatch[1]) current.country = countryMatch[1].toUpperCase();
+
+          const langMatch = line.match(/tvg-language="([^"]*)"/);
+          if (langMatch && langMatch[1]) current.language = langMatch[1];
+
+          const parts = line.split(',');
+          if (parts.length > 1) current.title = parts[parts.length - 1].trim();
+        } else if (line && !line.startsWith('#') && current) {
+          if (line.startsWith('https://')) {
+            current.url = line;
+            list.push(current);
+          }
+          current = null;
+        }
+      }
+      return list;
     }
 
     function populateFilters() {
@@ -447,6 +507,7 @@
 
       const fill = (id, set) => {
         const el = document.getElementById(id);
+        el.innerHTML = `<option value="">All ${id === 'countryFilter' ? 'Countries' : id === 'langFilter' ? 'Languages' : 'Genres'}</option>`;
         Array.from(set).sort().forEach(item => {
           const opt = document.createElement('option');
           opt.value = item;
@@ -487,7 +548,10 @@
       paged.forEach(ch => {
         const card = document.createElement('div');
         card.className = `channel-card ${activeChannel && ch.url === activeChannel.url ? 'active-card' : ''}`;
-        card.onclick = () => playStream(ch);
+        card.onclick = () => {
+          playStream(ch);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
 
         card.innerHTML = `
           <div class="logo-box">
@@ -612,7 +676,6 @@
       const playerBox = document.getElementById('mainPlayerBox');
       const rect = anchor.getBoundingClientRect();
 
-      // প্লেয়ার এলাকা পার হয়ে নিচে স্ক্রোল করলেই মিনিপ্লেয়ার হবে
       if (rect.bottom < 100 && activeChannel) {
         playerBox.classList.add('mini');
       } else {
@@ -622,4 +685,10 @@
 
     document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('countryFilter').addEventListener('change', applyFilters);
-    document.getElementById('langFilter').addEventListener('change', applyFilters
+    document.getElementById('langFilter').addEventListener('change', applyFilters);
+    document.getElementById('catFilter').addEventListener('change', applyFilters);
+
+    window.onload = init;
+  </script>
+</body>
+</html>
