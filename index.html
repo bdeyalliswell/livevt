@@ -33,9 +33,9 @@
     }
 
     header {
-      padding: 1rem 2rem;
+      padding: 0.85rem 2rem;
       border-bottom: 1px solid var(--card-border);
-      background: rgba(9, 12, 21, 0.85);
+      background: rgba(9, 12, 21, 0.9);
       backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
@@ -43,7 +43,6 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.5rem;
     }
 
     .brand {
@@ -55,8 +54,8 @@
     }
 
     .brand img {
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       border-radius: 10px;
       object-fit: cover;
       border: 1px solid var(--card-border);
@@ -64,7 +63,7 @@
     }
 
     .brand-title {
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       font-weight: 800;
       background: linear-gradient(135deg, #fff, var(--accent));
       -webkit-background-clip: text;
@@ -72,12 +71,127 @@
       letter-spacing: -0.5px;
     }
 
+    /* Top Main Player Section */
+    .player-anchor {
+      width: 100%;
+      max-width: 1100px;
+      margin: 1.5rem auto 0.5rem auto;
+      padding: 0 1.5rem;
+      min-height: 480px;
+    }
+
+    .player-box {
+      width: 100%;
+      height: 480px;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Scroll-down to Miniplayer State */
+    .player-box.mini {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      width: 380px;
+      height: 220px;
+      z-index: 999;
+      border-radius: 12px;
+      border: 1px solid var(--accent);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.85), 0 0 20px var(--accent-glow);
+    }
+
+    .video-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .player-header-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 10px 15px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .player-controls-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 10px 15px;
+      background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .ctrl-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .ctrl-btn:hover { background: var(--accent); color: #000; }
+
+    .close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .player-box.mini .close-btn { display: flex; }
+
+    /* Filters */
     .filter-panel {
-      padding: 1.2rem 2rem;
+      padding: 1rem 2rem;
       display: flex;
       flex-wrap: wrap;
       gap: 1rem;
       align-items: center;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
     }
 
     .search-box {
@@ -122,24 +236,27 @@
       outline: none;
     }
 
-    .select-dropdown:focus {
-      border-color: var(--accent);
-    }
-
-    /* 5x20 Grid Layout */
+    /* 5x20 Grid */
     .catalog-wrapper {
       padding: 1rem 2rem;
       flex: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
     }
 
     .grid-container {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 1.25rem;
+      gap: 1.2rem;
     }
 
     @media (max-width: 1200px) { .grid-container { grid-template-columns: repeat(4, 1fr); } }
-    @media (max-width: 900px) { .grid-container { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 900px) { 
+      .grid-container { grid-template-columns: repeat(3, 1fr); }
+      .player-anchor { min-height: 320px; }
+      .player-box { height: 320px; }
+    }
     @media (max-width: 650px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 420px) { .grid-container { grid-template-columns: 1fr; } }
 
@@ -171,7 +288,7 @@
 
     .logo-box {
       width: 100%;
-      height: 90px;
+      height: 85px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -240,86 +357,36 @@
       color: #000;
       border-color: var(--accent);
     }
-
-    /* Floating Miniplayer */
-    .miniplayer-wrapper {
-      position: fixed;
-      bottom: 25px;
-      right: 25px;
-      width: 380px;
-      max-width: calc(100vw - 40px);
-      background: #000;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid var(--accent);
-      box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px var(--accent-glow);
-      z-index: 1000;
-      display: none;
-      flex-direction: column;
-    }
-
-    .miniplayer-wrapper.active {
-      display: flex;
-    }
-
-    .miniplayer-header {
-      background: rgba(18, 24, 40, 0.9);
-      padding: 0.55rem 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .btn-close {
-      background: transparent;
-      border: none;
-      color: #fff;
-      font-size: 1.2rem;
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .video-viewport {
-      position: relative;
-      width: 100%;
-      height: 215px;
-      background: #000;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .unmute-banner {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(5px);
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
   </style>
 </head>
 <body>
 
   <header>
     <a href="#" class="brand">
-      <img src="logo.png" onerror="this.src='https://via.placeholder.com/48/00f2fe/000?text=TV'" alt="logo">
+      <img src="logo.png" onerror="this.src='logo.png'" alt="logo">
       <div class="brand-title">bdeytv-live</div>
     </a>
     <div id="stat-counter" style="font-size: 0.8rem; color: var(--muted);">Loading channels...</div>
   </header>
+
+  <!-- Player Anchor (Keeps layout space when minimized) -->
+  <div class="player-anchor" id="playerAnchor">
+    <div class="player-box" id="mainPlayerBox">
+      <div class="video-container">
+        <div class="player-header-bar">
+          <span id="playingTitle">Select a channel to play</span>
+          <button class="close-btn" onclick="closePlayer()" title="Close Player">&times;</button>
+        </div>
+        
+        <video id="tvPlayer" playsinline muted></video>
+
+        <div class="player-controls-bar">
+          <button class="ctrl-btn" id="muteBtn" onclick="toggleMute()">🔇 Unmute</button>
+          <button class="ctrl-btn" onclick="toggleFullScreen()">⛶ Fullscreen</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <section class="filter-panel">
     <div class="search-box">
@@ -336,28 +403,13 @@
     <div id="pagination" class="pagination-bar"></div>
   </main>
 
-  <!-- Floating Miniplayer with ONLY (X) button -->
-  <div id="miniplayer" class="miniplayer-wrapper">
-    <div class="miniplayer-header">
-      <span id="playingTitle">Live Stream</span>
-      <button class="btn-close" onclick="closePlayer()" title="Close Player">&times;</button>
-    </div>
-    <div class="video-viewport">
-      <video id="tvPlayer" playsinline></video>
-      <div id="unmuteAlert" class="unmute-banner" onclick="toggleMute()">
-        <span id="muteLabel">🔇 Click to Unmute</span>
-      </div>
-    </div>
-  </div>
-
   <script>
     const ITEMS_PER_PAGE = 100; // 5x20 Grid
     let allChannels = [];
     let filteredChannels = [];
     let currentPage = 1;
     let hls = null;
-    let activeChannelUrl = "";
-    let isProxyApplied = false;
+    let activeChannel = null;
 
     async function init() {
       try {
@@ -368,15 +420,21 @@
           throw new Error('channels.json not found');
         }
       } catch (e) {
-        // Fallback test stream
+        // Fallback test working streams
         allChannels = [
-          { title: "Red Bull TV Live", logo: "logo.png", country: "US", language: "English", category: "Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/FLN_PB_AND/master.m3u8" }
+          { title: "Red Bull TV (Live 24/7)", logo: "logo.png", country: "US", language: "English", category: "Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/FLN_PB_AND/master.m3u8" },
+          { title: "NASA TV HD", logo: "logo.png", country: "US", language: "English", category: "Science", url: "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8" }
         ];
       }
 
-      document.getElementById('stat-counter').innerText = `${allChannels.length} Live Channels Ready`;
+      document.getElementById('stat-counter').innerText = `${allChannels.length} Channels`;
       populateFilters();
       applyFilters();
+
+      // Automatically play the 1st channel by default (muted)
+      if (allChannels.length > 0) {
+        playStream(allChannels[0]);
+      }
     }
 
     function populateFilters() {
@@ -428,7 +486,7 @@
 
       paged.forEach(ch => {
         const card = document.createElement('div');
-        card.className = `channel-card ${ch.url === activeChannelUrl ? 'active-card' : ''}`;
+        card.className = `channel-card ${activeChannel && ch.url === activeChannel.url ? 'active-card' : ''}`;
         card.onclick = () => playStream(ch);
 
         card.innerHTML = `
@@ -460,7 +518,7 @@
         btn.onclick = () => {
           currentPage = page;
           renderGrid();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          window.scrollTo({ top: 400, behavior: 'smooth' });
         };
         return btn;
       };
@@ -478,22 +536,18 @@
       if (currentPage < totalPages) container.appendChild(createBtn('Next »', currentPage + 1));
     }
 
-    function playStream(ch, bypassCors = false) {
-      activeChannelUrl = ch.url;
-      const miniplayer = document.getElementById('miniplayer');
+    function playStream(ch, useProxy = false) {
+      activeChannel = ch;
       const video = document.getElementById('tvPlayer');
       const title = document.getElementById('playingTitle');
-
-      miniplayer.classList.add('active');
       title.innerText = ch.title;
       renderGrid();
 
-      video.muted = true; // By default mute
-      document.getElementById('muteLabel').innerText = "🔇 Click to Unmute";
+      video.muted = true;
+      document.getElementById('muteBtn').innerText = "🔇 Unmute";
 
       let streamUrl = ch.url;
-      if (bypassCors) {
-        // CORS Proxy fallback for blocked streams
+      if (useProxy) {
         streamUrl = `https://corsproxy.io/?url=${encodeURIComponent(ch.url)}`;
       }
 
@@ -511,8 +565,7 @@
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal && !bypassCors) {
-            // Auto-retry with CORS Proxy
+          if (data.fatal && !useProxy) {
             playStream(ch, true);
           }
         });
@@ -525,11 +578,22 @@
     function toggleMute() {
       const video = document.getElementById('tvPlayer');
       video.muted = !video.muted;
-      document.getElementById('muteLabel').innerText = video.muted ? "🔇 Click to Unmute" : "🔊 Sound On";
+      document.getElementById('muteBtn').innerText = video.muted ? "🔇 Unmute" : "🔊 Mute";
+    }
+
+    function toggleFullScreen() {
+      const video = document.getElementById('tvPlayer');
+      if (!document.fullscreenElement) {
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
     }
 
     function closePlayer() {
-      const miniplayer = document.getElementById('miniplayer');
+      const playerBox = document.getElementById('mainPlayerBox');
+      playerBox.classList.remove('mini');
       const video = document.getElementById('tvPlayer');
       if (hls) {
         hls.destroy();
@@ -537,17 +601,25 @@
       }
       video.pause();
       video.src = "";
-      miniplayer.classList.remove('active');
-      activeChannelUrl = "";
+      document.getElementById('playingTitle').innerText = "Select a channel to play";
+      activeChannel = null;
       renderGrid();
     }
 
+    /* Scroll Listener: Scroll Down = Minimize, Scroll Up = Normal */
+    window.addEventListener('scroll', () => {
+      const anchor = document.getElementById('playerAnchor');
+      const playerBox = document.getElementById('mainPlayerBox');
+      const rect = anchor.getBoundingClientRect();
+
+      // প্লেয়ার এলাকা পার হয়ে নিচে স্ক্রোল করলেই মিনিপ্লেয়ার হবে
+      if (rect.bottom < 100 && activeChannel) {
+        playerBox.classList.add('mini');
+      } else {
+        playerBox.classList.remove('mini');
+      }
+    });
+
     document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('countryFilter').addEventListener('change', applyFilters);
-    document.getElementById('langFilter').addEventListener('change', applyFilters);
-    document.getElementById('catFilter').addEventListener('change', applyFilters);
-
-    window.onload = init;
-  </script>
-</body>
-</html>
+    document.getElementById('langFilter').addEventListener('change', applyFilters
