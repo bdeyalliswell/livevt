@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full bg-black select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>WP-reel</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons CDN -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: #000;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+
+    /* Vertical Scroll Snap Container */
+    .reels-feed {
+      scroll-snap-type: y mandatory;
+      overflow-y: scroll;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .reels-feed::-webkit-scrollbar {
+      display: none;
+    }
+
+    .reel-item {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      position: relative;
+    }
+
+    /* Play/Pause Pulse Animation */
+    @keyframes pulseFade {
+      0% { transform: scale(0.65); opacity: 0; }
+      50% { transform: scale(1.15); opacity: 0.95; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+    .pulse-feedback {
+      animation: pulseFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Seek Ripple Animation for Left/Right Double Tap */
+    @keyframes seekRippleEffect {
+      0% { opacity: 0.85; transform: scale(0.85); }
+      50% { opacity: 1; transform: scale(1.05); }
+      100% { opacity: 0; transform: scale(1.2); }
+    }
+    .seek-ripple {
+      animation: seekRippleEffect 0.5s ease-out forwards;
+    }
+
+    /* Enhanced Timeline Scrubber Styling */
+    .scrubber-zone {
+      touch-action: none; /* Prevent scroll conflict while scrubbing */
+    }
+
+    .timeline-track {
+      transition: height 0.18s ease;
+    }
+
+    .scrubber-zone:hover .timeline-track,
+    .scrubber-zone.active .timeline-track {
+      height: 8px;
+    }
+
+    .scrubber-handle {
+      transition: transform 0.18s ease, opacity 0.18s ease;
+      transform: translate(-50%, -50%) scale(0.7);
+    }
+
+    .scrubber-zone:hover .scrubber-handle,
+    .scrubber-zone.active .scrubber-handle {
+      transform: translate(-50%, -50%) scale(1.25);
+      opacity: 1 !important;
+    }
+
+    /* Auto-hiding Overlays */
+    .controls-overlay {
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .controls-overlay.hidden-overlay {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-black flex justify-center items-center">
+
+  <!-- Main Viewport Enclosure (Full Screen on Mobile, Constrained on Desktop) -->
+  <div class="relative w-full h-full max-w-md md:h-[94vh] md:max-h-[920px] md:rounded-3xl md:border md:border-neutral-900 bg-black overflow-hidden flex flex-col shadow-2xl">
+
+    <!-- Top Minimal Header Bar (Brand Name, Shuffle Toggle, Fit Mode, Mute) -->
+    <header class="absolute top-0 left-0 right-0 z-30 px-4 pt-3.5 pb-8 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/80 via-black/35 to-transparent">
+      
+      <!-- Brand & Shuffle Toggle -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <span class="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5 drop-shadow-md">
+          <i class="ph-fill ph-film-strip text-red-500 text-lg"></i>
+          WP-reel
+        </span>
+
+        <button 
+          id="shuffleBtn" 
+          onclick="toggleShuffle()" 
+          title="Shuffle Mode Toggle" 
+          class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-[11px] font-semibold text-white active:scale-95 transition-all shadow-md ml-1">
+          <i class="ph-bold ph-shuffle text-xs text-red-500" id="shuffleIcon"></i>
+          <span id="shuffleText" class="tracking-wide">Shuffle ON</span>
+        </button>
+      </div>
+
+      <!-- Right Header Actions (Aspect Fit + Mute) -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <!-- Fit/Cover Mode Toggle -->
+        <button 
+          id="fitModeBtn" 
+          onclick="toggleFitMode()" 
+          title="Toggle Cover / Fit" 
+          class="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-center text-white active:scale-95 transition-all shadow-md">
+          <i class="ph-bold ph-arrows-out text-sm" id="fitIcon"></i>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button 
+          id="muteBtn" 
+          onclick="toggleMute()" 
+          title="Sound Mute Toggle" 
+          class="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-center text-white active:scale-95 transition-all shadow-md">
+          <i class="ph-bold ph-speaker-simple-slash text-sm" id="muteIcon"></i>
+        </button>
+      </div>
+
+    </header>
+
+    <!-- Scrollable Reels Feed (Vertical Snap) -->
+    <main id="reelsFeed" class="reels-feed flex-1 w-full h-full relative">
+      <!-- Slides dynamically loaded here -->
+    </main>
+
+    <!-- Desktop Keyboard / Side Navigation Hint Buttons -->
+    <div class="hidden md:flex flex-col gap-3 absolute -right-16 top-1/2 -translate-y-1/2 z-40 text-neutral-400">
+      <button onclick="navigateSlide(-1)" class="w-11 h-11 rounded-full bg-neutral-900 border border-neutral-800 hover:text-white transition flex items-center justify-center shadow-xl active:scale-90" title="Previous Video (Arrow Up)">
+        <i class="ph-bold ph-caret-up text-xl"></i>
+      </button>
+      <button onclick="navigateSlide(1)" class="w-11 h-11 rounded-full bg-neutral-900 border border-neutral-800 hover:text-white transition flex items-center justify-center shadow-xl active:scale-90" title="Next Video (Arrow Down)">
+        <i class="ph-bold ph-caret-down text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Floating System Toast -->
+    <div id="toast" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-300 bg-neutral-900/95 backdrop-blur-md border border-neutral-800 text-white text-xs px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5">
+      <span id="toastMsg">বিজ্ঞপ্তি</span>
+    </div>
+
+  </div>
+
+  <script>
+    // Configuration & State
+    // Range: v9575 to v13240 (3,666 total videos)
+    const MIN_ID = 9575;
+    const MAX_ID = 13240;
+    const BASE_URL = "https://server2.mydown.biz/myfiless/id/v";
+    const BUFFER_SLIDES = 4;
+
+    let isShuffleOn = true;
+    let isMuted = true;
+    let isCoverFit = true;
+    let sequentialPointer = MIN_ID;
+    let currentSlideIndex = 0;
+    const slideElements = [];
+    let intersectionObserver = null;
+
+    const reelsFeed = document.getElementById('reelsFeed');
+
+    // Helper: Format Seconds into MM:SS
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds) || seconds < 0) return "00:00";
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // Generate Next Video Numeric ID
+    function getNextVideoId() {
+      if (isShuffleOn) {
+        return Math.floor(Math.random() * (MAX_ID - MIN_ID + 1)) + MIN_ID;
+      } else {
+        const id = sequentialPointer;
+        sequentialPointer++;
+        if (sequentialPointer > MAX_ID) sequentialPointer = MIN_ID;
+        return id;
+      }
+    }
+
+    // Direct Video Downloader
+    function downloadCurrentVideo(videoUrl, videoId) {
+      showToast(`ডাউনলোড শুরু হচ্ছে: v${videoId}.mp4`);
+      
+      const link = document.createElement('a');
+      link.href = videoUrl;
+      link.setAttribute('download', `WP-reel-v${videoId}.mp4`);
+      link.setAttribute('target', '_blank');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Build Slide Component
+    function createReelSlide(videoId, index) {
+      const slide = document.createElement('section');
+      slide.className = 'reel-item flex items-center justify-center bg-black overflow-hidden relative';
+      slide.dataset.id = videoId;
+      slide.dataset.index = index;
+
+      // Video link with prefix 'v'
+      const videoUrl = `${BASE_URL}${videoId}.mp4`;
+
+      slide.innerHTML = `
+        <!-- Fullscreen Video Element -->
+        <video 
+          class="w-full h-full ${isCoverFit ? 'object-cover' : 'object-contain'} transition-all duration-300 cursor-pointer pointer-events-none"
+          playsinline 
+          webkit-playsinline
+          loop 
+          preload="metadata"
+          ${isMuted ? 'muted' : ''}
+          src="${videoUrl}">
+        </video>
+
+        <!-- Tap Gesture Layer (Left Half: -5s double-tap, Right Half: +5s double-tap, Single: Play/Pause) -->
+        <div class="gesture-layer absolute inset-0 z-10 flex">
+          <div class="tap-left w-1/2 h-full relative cursor-pointer"></div>
+          <div class="tap-right w-1/2 h-full relative cursor-pointer"></div>
+        </div>
+
+        <!-- Ripple Indicators for Double-Tap Rewind / Fast Forward -->
+        <div class="rewind-ripple absolute left-10 top-1/2 -translate-y-1/2 z-20 hidden flex-col items-center gap-1 pointer-events-none text-white bg-black/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 shadow-2xl">
+          <i class="ph-bold ph-rewind text-2xl text-red-500"></i>
+          <span class="text-[11px] font-bold tracking-wider">-5s</span>
+        </div>
+        <div class="forward-ripple absolute right-10 top-1/2 -translate-y-1/2 z-20 hidden flex-col items-center gap-1 pointer-events-none text-white bg-black/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 shadow-2xl">
+          <i class="ph-bold ph-fast-forward text-2xl text-red-500"></i>
+          <span class="text-[11px] font-bold tracking-wider">+5s</span>
+        </div>
+
+        <!-- Center Play/Pause Overlay Animation -->
+        <div class="center-play-badge pointer-events-none absolute z-20 hidden w-16 h-16 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center text-3xl shadow-2xl">
+          <i class="ph-fill ph-play"></i>
+        </div>
+
+        <!-- Buffering Spinner -->
+        <div class="spinner absolute inset-0 z-15 flex items-center justify-center bg-black/30 pointer-events-none transition-opacity">
+          <div class="w-10 h-10 border-2 border-white/20 border-t-red-500 rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Floating Download Button (Right Side) -->
+        <div class="absolute right-4 bottom-24 z-20 pointer-events-auto">
+          <button class="btn-download w-11 h-11 rounded-full bg-black/55 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-2xl active:scale-90 hover:bg-red-600 transition group" title="Download Reel">
+            <i class="ph-bold ph-download-simple text-xl group-hover:scale-110 transition-transform"></i>
+          </button>
+        </div>
+
+        <!-- Floating Seek Buttons (-10s / +10s) and Duration Readout -->
+        <div class="controls-overlay absolute bottom-14 left-0 right-0 z-20 px-4 flex items-center justify-between pointer-events-none transition-all duration-300">
+          <!-- Rewind 10s button -->
+          <button class="btn-seek-left pointer-events-auto flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-md border border-white/15 text-white active:scale-90 hover:bg-black/75 transition text-xs font-semibold shadow-lg">
+            <i class="ph-bold ph-arrow-counter-clockwise text-sm text-red-400"></i>
+            <span>-10s</span>
+          </button>
+
+          <!-- Current / Total Duration Badge + Video Tag -->
+          <div class="time-readout px-3 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/10 text-white font-mono text-[11px] tracking-wide pointer-events-none shadow-md flex items-center gap-1.5">
+            <span class="text-neutral-400 font-sans font-medium text-[10px]">#v${videoId}</span>
+            <span class="text-neutral-500">•</span>
+            <span class="curr-val">00:00</span> / <span class="dur-val">00:00</span>
+          </div>
+
+          <!-- Forward 10s button -->
+          <button class="btn-seek-right pointer-events-auto flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-md border border-white/15 text-white active:scale-90 hover:bg-black/75 transition text-xs font-semibold shadow-lg">
+            <span>+10s</span>
+            <i class="ph-bold ph-arrow-clockwise text-sm text-red-400"></i>
+          </button>
+        </div>
+
+        <!-- Floating Scrubber Tooltip Bubble (Visible while dragging timeline) -->
+        <div class="scrub-bubble absolute bottom-9 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-150 bg-black/90 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-md text-[11px] font-mono text-white shadow-xl">
+          <span class="bubble-time">00:00</span>
+        </div>
+
+        <!-- Bottom Scrubber Zone -->
+        <div class="scrubber-zone absolute bottom-0 left-0 right-0 z-30 h-8 flex flex-col justify-end cursor-pointer group">
+          <div class="timeline-track relative w-full h-[4px] bg-white/25">
+            <!-- Progress Fill -->
+            <div class="timeline-fill h-full bg-gradient-to-r from-red-600 to-red-500 w-0 pointer-events-none"></div>
+            <!-- Draggable Grabber Handle -->
+            <div class="scrubber-handle absolute top-1/2 left-0 w-4 h-4 rounded-full bg-white shadow-lg pointer-events-none opacity-0"></div>
+          </div>
+        </div>
+      `;
+
+      // DOM Elements
+      const video = slide.querySelector('video');
+      const tapLeft = slide.querySelector('.tap-left');
+      const tapRight = slide.querySelector('.tap-right');
+      const playBadge = slide.querySelector('.center-play-badge');
+      const playIcon = playBadge.querySelector('i');
+      const spinner = slide.querySelector('.spinner');
+      const rewindRipple = slide.querySelector('.rewind-ripple');
+      const forwardRipple = slide.querySelector('.forward-ripple');
+      const btnSeekLeft = slide.querySelector('.btn-seek-left');
+      const btnSeekRight = slide.querySelector('.btn-seek-right');
+      const btnDownload = slide.querySelector('.btn-download');
+      const currVal = slide.querySelector('.curr-val');
+      const durVal = slide.querySelector('.dur-val');
+      const scrubBubble = slide.querySelector('.scrub-bubble');
+      const bubbleTime = slide.querySelector('.bubble-time');
+      const scrubberZone = slide.querySelector('.scrubber-zone');
+      const timelineFill = slide.querySelector('.timeline-fill');
+      const scrubberHandle = slide.querySelector('.scrubber-handle');
+      const controlsOverlay = slide.querySelector('.controls-overlay');
+
+      let isDragging = false;
+      let leftTapTimer = null;
+      let rightTapTimer = null;
+      let controlsHideTimeout = null;
+
+      // Ping to auto-hide seek controls
+      function pingControls() {
+        controlsOverlay.classList.remove('hidden-overlay');
+        clearTimeout(controlsHideTimeout);
+        controlsHideTimeout = setTimeout(() => {
+          if (!video.paused && !isDragging) {
+            controlsOverlay.classList.add('hidden-overlay');
+          }
+        }, 2800);
+      }
+
+      // Update Playback Display
+      function updateTimeline() {
+        if (!isDragging && video.duration) {
+          const pct = (video.currentTime / video.duration) * 100;
+          timelineFill.style.width = `${pct}%`;
+          scrubberHandle.style.left = `${pct}%`;
+          currVal.textContent = formatTime(video.currentTime);
+          durVal.textContent = formatTime(video.duration);
+        }
+      }
+
+      video.addEventListener('timeupdate', updateTimeline);
+      video.addEventListener('loadedmetadata', () => {
+        durVal.textContent = formatTime(video.duration);
+      });
+      video.addEventListener('canplay', () => spinner.classList.add('hidden'));
+      video.addEventListener('waiting', () => spinner.classList.remove('hidden'));
+      video.addEventListener('playing', () => {
+        spinner.classList.add('hidden');
+        pingControls();
+      });
+
+      // Show Play/Pause Center Animation
+      function triggerPlayPause() {
+        if (video.paused) {
+          video.play();
+          playIcon.className = 'ph-fill ph-play';
+        } else {
+          video.pause();
+          playIcon.className = 'ph-fill ph-pause';
+        }
+        playBadge.classList.remove('hidden', 'pulse-feedback');
+        void playBadge.offsetWidth;
+        playBadge.classList.add('pulse-feedback');
+        setTimeout(() => playBadge.classList.add('hidden'), 450);
+        pingControls();
+      }
+
+      // Quick Seek by Delta (±5s, ±10s)
+      function seekBy(deltaSeconds, showRipple = null) {
+        if (!video.duration) return;
+        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + deltaSeconds));
+        updateTimeline();
+        pingControls();
+
+        if (showRipple) {
+          showRipple.classList.remove('hidden', 'seek-ripple');
+          void showRipple.offsetWidth;
+          showRipple.classList.add('seek-ripple');
+          setTimeout(() => showRipple.classList.add('hidden'), 500);
+        }
+      }
+
+      // Left Tap Logic: Double-tap rewinds 5s, single-tap toggles play
+      tapLeft.addEventListener('click', (e) => {
+        const rect = slide.getBoundingClientRect();
+        if (e.clientY > rect.bottom - 48) return;
+
+        if (leftTapTimer) {
+          clearTimeout(leftTapTimer);
+          leftTapTimer = null;
+          seekBy(-5, rewindRipple);
+        } else {
+          leftTapTimer = setTimeout(() => {
+            triggerPlayPause();
+            leftTapTimer = null;
+          }, 240);
+        }
+      });
+
+      // Right Tap Logic: Double-tap forwards 5s, single-tap toggles play
+      tapRight.addEventListener('click', (e) => {
+        const rect = slide.getBoundingClientRect();
+        if (e.clientY > rect.bottom - 48) return;
+
+        if (rightTapTimer) {
+          clearTimeout(rightTapTimer);
+          rightTapTimer = null;
+          seekBy(5, forwardRipple);
+        } else {
+          rightTapTimer = setTimeout(() => {
+            triggerPlayPause();
+            rightTapTimer = null;
+          }, 240);
+        }
+      });
+
+      // Seek -10s / +10s Buttons
+      btnSeekLeft.addEventListener('click', (e) => {
+        e.stopPropagation();
+        seekBy(-10, rewindRipple);
+      });
+      btnSeekRight.addEventListener('click', (e) => {
+        e.stopPropagation();
+        seekBy(10, forwardRipple);
+      });
+
+      // Download Button
+      btnDownload.addEventListener('click', (e) => {
+        e.stopPropagation();
+        downloadCurrentVideo(videoUrl, videoId);
+      });
+
+      // Scrubbing / Dragging Functionality for Timeline
+      function processScrub(clientX) {
+        if (!video.duration) return;
+        const rect = scrubberZone.getBoundingClientRect();
+        const offsetX = Math.max(0, Math.min(clientX - rect.left, rect.width));
+        const fraction = offsetX / rect.width;
+
+        timelineFill.style.width = `${fraction * 100}%`;
+        scrubberHandle.style.left = `${fraction * 100}%`;
+
+        const targetTime = fraction * video.duration;
+        video.currentTime = targetTime;
+
+        // Update tooltip bubble
+        bubbleTime.textContent = formatTime(targetTime);
+        currVal.textContent = formatTime(targetTime);
+        scrubBubble.style.left = `${offsetX}px`;
+      }
+
+      function startScrubbing(e) {
+        if (!video.duration) return;
+        isDragging = true;
+        scrubberZone.classList.add('active');
+        scrubBubble.classList.remove('opacity-0');
+        pingControls();
+
+        const initialX = e.touches ? e.touches[0].clientX : e.clientX;
+        processScrub(initialX);
+
+        function onMove(evt) {
+          if (!isDragging) return;
+          const currentX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+          processScrub(currentX);
+        }
+
+        function onEnd() {
+          isDragging = false;
+          scrubberZone.classList.remove('active');
+          scrubBubble.classList.add('opacity-0');
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onEnd);
+          window.removeEventListener('touchmove', onMove);
+          window.removeEventListener('touchend', onEnd);
+          pingControls();
+        }
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', onMove, { passive: true });
+        window.addEventListener('touchend', onEnd);
+      }
+
+      scrubberZone.addEventListener('mousedown', startScrubbing);
+      scrubberZone.addEventListener('touchstart', startScrubbing, { passive: true });
+
+      return slide;
+    }
+
+    // Append New Slide to the Feed
+    function appendSlide() {
+      const nextId = getNextVideoId();
+      const slide = createReelSlide(nextId, slideElements.length);
+      reelsFeed.appendChild(slide);
+      slideElements.push(slide);
+
+      if (intersectionObserver) {
+        intersectionObserver.observe(slide);
+      }
+    }
+
+    // IntersectionObserver to Auto-Play & Manage Memory
+    function setupObserver() {
+      if (intersectionObserver) intersectionObserver.disconnect();
+
+      intersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const video = entry.target.querySelector('video');
+          const index = parseInt(entry.target.dataset.index);
+
+          if (entry.isIntersecting) {
+            currentSlideIndex = index;
+            video.muted = isMuted;
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(() => {});
+            }
+
+            // Buffer extra slides when approaching the bottom
+            if (currentSlideIndex >= slideElements.length - 2) {
+              appendSlide();
+              appendSlide();
+            }
+          } else {
+            video.pause();
+            video.currentTime = 0;
+          }
+        });
+      }, {
+        root: reelsFeed,
+        threshold: 0.65
+      });
+
+      slideElements.forEach(slide => intersectionObserver.observe(slide));
+    }
+
+    // Toggle Shuffle Mode (ON / OFF)
+    function toggleShuffle() {
+      isShuffleOn = !isShuffleOn;
+      const text = document.getElementById('shuffleText');
+      const icon = document.getElementById('shuffleIcon');
+
+      if (isShuffleOn) {
+        text.textContent = 'Shuffle ON';
+        icon.className = 'ph-bold ph-shuffle text-xs text-red-500';
+        showToast('র্যান্ডম শাফেল চালু (Shuffle ON)');
+      } else {
+        text.textContent = 'Shuffle OFF';
+        icon.className = 'ph-bold ph-list-numbers text-xs text-neutral-400';
+        const activeSlide = slideElements[currentSlideIndex];
+        if (activeSlide) {
+          sequentialPointer = parseInt(activeSlide.dataset.id) + 1;
+        }
+        showToast('ধারাবাহিক প্লেব্যাক (Sequential ON)');
+      }
+    }
+
+    // Toggle Mute Audio
+    function toggleMute() {
+      isMuted = !isMuted;
+      const icon = document.getElementById('muteIcon');
+
+      if (isMuted) {
+        icon.className = 'ph-bold ph-speaker-simple-slash text-sm text-white';
+        showToast('সাউন্ড মিউট (Muted)');
+      } else {
+        icon.className = 'ph-bold ph-speaker-high text-sm text-red-400';
+        showToast('সাউন্ড আনমিউট (Sound ON)');
+      }
+
+      document.querySelectorAll('video').forEach(v => {
+        v.muted = isMuted;
+      });
+    }
+
+    // Toggle Video Aspect Fit (Cover vs Contain)
+    function toggleFitMode() {
+      isCoverFit = !isCoverFit;
+      const icon = document.getElementById('fitIcon');
+
+      if (isCoverFit) {
+        icon.className = 'ph-bold ph-arrows-out text-sm';
+        showToast('ফুলস্ক্রিন জুম (Cover)');
+      } else {
+        icon.className = 'ph-bold ph-arrows-in text-sm text-red-400';
+        showToast('সম্পূর্ণ দৃশ্য (Contain Fit)');
+      }
+
+      document.querySelectorAll('video').forEach(v => {
+        if (isCoverFit) {
+          v.classList.remove('object-contain');
+          v.classList.add('object-cover');
+        } else {
+          v.classList.remove('object-cover');
+          v.classList.add('object-contain');
+        }
+      });
+    }
+
+    // Slide Navigation Helper
+    function navigateSlide(direction) {
+      const targetIndex = currentSlideIndex + direction;
+      if (targetIndex >= 0) {
+        if (targetIndex >= slideElements.length) {
+          appendSlide();
+        }
+        if (slideElements[targetIndex]) {
+          slideElements[targetIndex].scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      const activeSlide = slideElements[currentSlideIndex];
+      const video = activeSlide ? activeSlide.querySelector('video') : null;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateSlide(1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateSlide(-1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (video) video.currentTime = Math.max(0, video.currentTime - 5);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (video) video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+      } else if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (video) {
+          if (video.paused) video.play();
+          else video.pause();
+        }
+      } else if (e.key === 'd' || e.key === 'D') {
+        if (activeSlide) {
+          const videoId = activeSlide.dataset.id;
+          downloadCurrentVideo(`${BASE_URL}${videoId}.mp4`, videoId);
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleMute();
+      } else if (e.key === 's' || e.key === 'S') {
+        toggleShuffle();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFitMode();
+      }
+    });
+
+    // Toast Notification Utility
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+
+      toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2000);
+    }
+
+    // Initialize on window load
+    window.onload = function() {
+      for (let i = 0; i < BUFFER_SLIDES; i++) {
+        appendSlide();
+      }
+      setupObserver();
+    };
+  </script>
+</body>
+</html>
+```
