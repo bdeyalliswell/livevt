@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full bg-black select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Dreel - night video scroll</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#FF0000',
+              accent: '#fe2c55',
+              dark: '#0f0f0f'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Phosphor Icons (Lightweight SVG icon library) -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;600;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', 'Hind Siliguri', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Full-screen Reels Container with Vertical Snap */
+    .reels-container {
+      scroll-snap-type: y mandatory;
+      overflow-y: scroll;
+      height: 100vh;
+      height: 100dvh;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+    }
+
+    .reels-container::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
+
+    .reel-slide {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      height: 100vh;
+      height: 100dvh;
+      position: relative;
+    }
+
+    /* Animated Disc Spin like TikTok / YouTube Shorts music badge */
+    @keyframes spinDisc {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-spin-disc {
+      animation: spinDisc 4s linear infinite;
+    }
+
+    /* Pop-up heart animation on double tap */
+    @keyframes heartBurst {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.3);
+      }
+      80% {
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(1.0);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -75%) scale(1.2);
+      }
+    }
+    .heart-burst {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      pointer-events: none;
+      animation: heartBurst 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      z-index: 45;
+    }
+
+    /* Pulsing play-pause feedback */
+    @keyframes playFeedback {
+      0% { transform: scale(0.6); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 0.9; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+    .feedback-icon {
+      animation: playFeedback 0.5s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="h-full bg-black text-white flex justify-center items-center overflow-hidden">
+
+  <!-- Desktop Mobile Frame Wrapper (on mobile it goes true 100vw/100vh) -->
+  <div class="relative w-full h-full max-w-md md:h-[94vh] md:max-h-[920px] md:rounded-3xl md:border md:border-neutral-800 bg-neutral-950 shadow-2xl overflow-hidden flex flex-col">
+
+    <!-- Top Floating Header Bar -->
+    <header class="absolute top-0 left-0 right-0 z-30 px-4 pt-3 pb-6 bg-gradient-to-b from-black/80 via-black/40 to-transparent flex items-center justify-between pointer-events-none">
+      
+      <!-- Brand Logo & Shuffle Badge -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center shadow-lg shadow-red-600/40">
+          <i class="ph-fill ph-play text-white text-base"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5 leading-none">
+            <span class="font-bold text-sm tracking-wide text-white">Shorts</span>
+            <span class="text-[9px] uppercase font-bold bg-neutral-800/90 text-red-400 px-1.5 py-0.5 rounded border border-neutral-700">Shuffle</span>
+          </div>
+          <span class="text-[10px] text-neutral-400">২,০০০+ র্যান্ডম ভিডিও</span>
+        </div>
+      </div>
+
+      <!-- Quick Action: Reshuffle / Sound Indicator -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <button 
+          onclick="shuffleNext()" 
+          title="র্যান্ডম পরবর্তী ভিডিও"
+          class="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md border border-white/10 hover:bg-white/20 active:scale-95 transition flex items-center justify-center text-white">
+          <i class="ph-bold ph-shuffle text-lg"></i>
+        </button>
+        <button 
+          onclick="toggleGlobalMute()" 
+          id="globalMuteBtn"
+          title="সাউন্ড অন/অফ"
+          class="w-9 h-9 rounded-full bg-black/50 backdrop-blur-md border border-white/10 hover:bg-white/20 active:scale-95 transition flex items-center justify-center text-white">
+          <i class="ph-bold ph-speaker-simple-slash text-lg" id="muteIcon"></i>
+        </button>
+      </div>
+
+    </header>
+
+    <!-- Scrollable Feed Container -->
+    <main id="reelsContainer" class="reels-container flex-1 w-full h-full relative">
+      <!-- Dynamic Reel Slides will be injected and cycled here -->
+    </main>
+
+    <!-- Desktop Navigation Controls (Optional side float) -->
+    <div class="hidden md:flex flex-col gap-2 absolute -right-14 top-1/2 -translate-y-1/2 z-40 text-neutral-400">
+      <button onclick="scrollToSlide(-1)" class="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 hover:text-white hover:bg-neutral-800 transition flex items-center justify-center shadow-lg active:scale-90" title="পূর্বের ভিডিও (Up Arrow)">
+        <i class="ph-bold ph-caret-up text-xl"></i>
+      </button>
+      <button onclick="scrollToSlide(1)" class="w-10 h-10 rounded-full bg-neutral-900 border border-neutral-800 hover:text-white hover:bg-neutral-800 transition flex items-center justify-center shadow-lg active:scale-90" title="পরের ভিডিও (Down Arrow)">
+        <i class="ph-bold ph-caret-down text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 transform -translate-y-5 opacity-0 pointer-events-none transition-all duration-300 bg-neutral-900/90 backdrop-blur-md border border-neutral-700 text-white text-xs px-4 py-2 rounded-full shadow-2xl flex items-center gap-2">
+      <i class="ph-bold ph-check text-emerald-400 text-sm" id="toastIcon"></i>
+      <span id="toastMsg">বিজ্ঞপ্তি</span>
+    </div>
+
+  </div>
+
+  <script>
+    // Configuration & State
+    const MIN_ID = 71644;
+    const MAX_ID = 73644;
+    const BASE_URL = "https://server2.mydown.biz/myfiless/id/";
+    
+    // Virtual slides buffer size (keeps DOM light & memory low)
+    const BUFFER_AHEAD = 3; 
+    let currentSlideIndex = 0;
+    let isGlobalMuted = true; // Mobile browsers require muted for initial auto-play
+    let hasUserInteracted = false;
+    let lastTapTime = 0;
+    let activeObserver = null;
+    let slideElements = [];
+
+    // Track played history to avoid instant repetition
+    const playedHistory = new Set();
+
+    // Helper: generate a pseudo-random ID that wasn't recently played
+    function getRandomVideoId() {
+      if (playedHistory.size > (MAX_ID - MIN_ID - 10)) {
+        playedHistory.clear();
+      }
+      let randomId;
+      do {
+        randomId = Math.floor(Math.random() * (MAX_ID - MIN_ID + 1)) + MIN_ID;
+      } while (playedHistory.has(randomId));
+
+      playedHistory.add(randomId);
+      return randomId;
+    }
+
+    // Generate Initial Slide Queue
+    const reelsContainer = document.getElementById('reelsContainer');
+
+    function createSlideElement(videoId, index) {
+      const slide = document.createElement('section');
+      slide.className = 'reel-slide w-full flex items-center justify-center bg-black overflow-hidden select-none';
+      slide.dataset.id = videoId;
+      slide.dataset.index = index;
+
+      const videoUrl = `${BASE_URL}${videoId}.mp4`;
+
+      // Mock random like count
+      const initialLikes = Math.floor(Math.random() * 850 + 120);
+
+      slide.innerHTML = `
+        <!-- Main Video Player -->
+        <video 
+          class="w-full h-full object-cover cursor-pointer"
+          playsinline 
+          webkit-playsinline
+          loop 
+          preload="metadata"
+          ${isGlobalMuted ? 'muted' : ''}
+          src="${videoUrl}">
+        </video>
+
+        <!-- Tap Gesture Overlay for Play/Pause and Double Tap Heart -->
+        <div class="absolute inset-0 z-10 flex items-center justify-center bg-transparent touch-action-manipulation" 
+             onclick="handleSlideClick(event, this)">
+          <!-- Centered feedback icon (Play/Pause) -->
+          <div class="playback-feedback hidden pointer-events-none w-16 h-16 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center text-3xl">
+            <i class="ph-fill ph-play"></i>
+          </div>
+        </div>
+
+        <!-- Video Bottom Gradient Shadow -->
+        <div class="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none z-15"></div>
+
+        <!-- Right Side Reels Action Bar -->
+        <div class="absolute right-2.5 bottom-16 z-20 flex flex-col items-center gap-4 text-white">
+          
+          <!-- Creator Avatar Mock -->
+          <div class="relative mb-1">
+            <div class="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-yellow-400 via-red-500 to-rose-600 shadow-md">
+              <div class="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center text-slate-200 text-sm font-bold">
+                <i class="ph-fill ph-user"></i>
+              </div>
+            </div>
+            <button class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] shadow" onclick="event.stopPropagation(); showToast('ফলো করা হয়েছে!')">
+              <i class="ph-bold ph-plus"></i>
+            </button>
+          </div>
+
+          <!-- Like Button -->
+          <button onclick="toggleLike(this, event)" class="like-btn flex flex-col items-center gap-1 active:scale-80 transition group">
+            <div class="w-11 h-11 rounded-full bg-neutral-900/60 backdrop-blur-md border border-white/10 flex items-center justify-center group-hover:bg-neutral-800">
+              <i class="ph-bold ph-heart text-2xl text-white group-hover:text-red-500 heart-icon transition-colors"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-neutral-200 like-counter">${initialLikes}</span>
+          </button>
+
+          <!-- Copy/Share Button -->
+          <button onclick="shareVideo('${videoUrl}', '${videoId}', event)" class="flex flex-col items-center gap-1 active:scale-80 transition group">
+            <div class="w-11 h-11 rounded-full bg-neutral-900/60 backdrop-blur-md border border-white/10 flex items-center justify-center group-hover:bg-neutral-800">
+              <i class="ph-bold ph-share-network text-2xl text-white"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-neutral-200">শেয়ার</span>
+          </button>
+
+          <!-- Direct Download Link -->
+          <a href="${videoUrl}" download target="_blank" onclick="event.stopPropagation()" class="flex flex-col items-center gap-1 active:scale-80 transition group text-white">
+            <div class="w-11 h-11 rounded-full bg-neutral-900/60 backdrop-blur-md border border-white/10 flex items-center justify-center group-hover:bg-neutral-800">
+              <i class="ph-bold ph-download-simple text-2xl"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-neutral-200">সেভ</span>
+          </a>
+
+          <!-- Audio Disc Spinning Animation -->
+          <div class="mt-2 w-10 h-10 rounded-full border-2 border-neutral-700 bg-neutral-950 flex items-center justify-center animate-spin-disc overflow-hidden">
+            <div class="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center text-[8px]">
+              <i class="ph-fill ph-music-notes"></i>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Bottom Video Details Overlay -->
+        <div class="absolute left-3 right-16 bottom-5 z-20 flex flex-col gap-1.5 text-left pointer-events-none">
+          <div class="flex items-center gap-2 pointer-events-auto">
+            <span class="bg-red-600/90 text-white text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+              <i class="ph-bold ph-fire"></i> #${videoId}
+            </span>
+            <span class="text-xs font-semibold text-white drop-shadow">@StreamReels</span>
+          </div>
+
+          <p class="text-xs text-neutral-200 line-clamp-2 drop-shadow-md font-medium leading-relaxed pointer-events-auto">
+            র্যান্ডম রিল পর্ব #${videoId} • অরিজিনাল ভিডিও স্ট্রিম ও হাই কোয়ালিটি ফুলস্ক্রিন প্লেব্যাক।
+          </p>
+
+          <!-- Audio Track Name -->
+          <div class="flex items-center gap-1.5 text-[11px] text-neutral-300 pointer-events-auto">
+            <i class="ph-fill ph-music-note text-red-400"></i>
+            <span class="truncate max-w-[200px]">Original Audio - #${videoId} Stream</span>
+          </div>
+        </div>
+
+        <!-- Bottom Slim Progress Bar -->
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
+          <div class="progress-bar h-full bg-red-600 w-0 transition-all duration-100 ease-linear"></div>
+        </div>
+
+        <!-- Buffering / Loading Spinner -->
+        <div class="loading-spinner absolute inset-0 z-5 flex items-center justify-center bg-black/30 pointer-events-none">
+          <div class="w-10 h-10 border-3 border-white/20 border-t-red-600 rounded-full animate-spin"></div>
+        </div>
+      `;
+
+      // Set up video playback events (loader hide, progress update)
+      const video = slide.querySelector('video');
+      const progress = slide.querySelector('.progress-bar');
+      const spinner = slide.querySelector('.loading-spinner');
+
+      video.addEventListener('canplay', () => {
+        spinner.classList.add('hidden');
+      });
+
+      video.addEventListener('waiting', () => {
+        spinner.classList.remove('hidden');
+      });
+
+      video.addEventListener('playing', () => {
+        spinner.classList.add('hidden');
+      });
+
+      video.addEventListener('timeupdate', () => {
+        if (video.duration) {
+          const pct = (video.currentTime / video.duration) * 100;
+          progress.style.width = `${pct}%`;
+        }
+      });
+
+      // Video load error auto-skip fallback
+      video.addEventListener('error', () => {
+        spinner.classList.add('hidden');
+        console.warn(`Video #${videoId} failed to load, preparing fallback.`);
+      });
+
+      return slide;
+    }
+
+    // Append Initial Batch of Random Slides
+    function initSlides(count = 6) {
+      for (let i = 0; i < count; i++) {
+        appendNewSlide();
+      }
+      setupIntersectionObserver();
+    }
+
+    function appendNewSlide() {
+      const nextId = getRandomVideoId();
+      const slide = createSlideElement(nextId, slideElements.length);
+      reelsContainer.appendChild(slide);
+      slideElements.push(slide);
+
+      if (activeObserver) {
+        activeObserver.observe(slide);
+      }
+    }
+
+    // IntersectionObserver to accurately track the snapped active slide
+    function setupIntersectionObserver() {
+      const options = {
+        root: reelsContainer,
+        threshold: 0.65 // Triggers when slide is 65% visible
+      };
+
+      if (activeObserver) {
+        activeObserver.disconnect();
+      }
+
+      activeObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const video = entry.target.querySelector('video');
+          const index = parseInt(entry.target.dataset.index);
+
+          if (entry.isIntersecting) {
+            currentSlideIndex = index;
+            video.muted = isGlobalMuted;
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(err => {
+                // Browser auto-play policy block
+                console.log("Autoplay waiting for user gesture:", err);
+              });
+            }
+
+            // Infinite dynamic loading buffer: add more random reels if reaching near the end
+            if (currentSlideIndex >= slideElements.length - BUFFER_AHEAD) {
+              appendNewSlide();
+              appendNewSlide();
+            }
+
+          } else {
+            // Scrolled out of view -> Pause & reset timestamp
+            video.pause();
+            video.currentTime = 0;
+          }
+        });
+      }, options);
+
+      slideElements.forEach(s => activeObserver.observe(s));
+    }
+
+    // Single Tap: Play/Pause | Double Tap: Heart Pop Animation & Like
+    function handleSlideClick(e, overlay) {
+      const now = Date.now();
+      const slide = overlay.closest('.reel-slide');
+      const video = slide.querySelector('video');
+      const feedback = overlay.querySelector('.playback-feedback');
+      const feedbackIcon = feedback.querySelector('i');
+
+      hasUserInteracted = true;
+
+      if (now - lastTapTime < 280) {
+        // Double Tap Detected
+        e.preventDefault();
+        spawnHeartBurst(e, slide);
+        const likeBtn = slide.querySelector('.like-btn');
+        if (likeBtn) toggleLike(likeBtn, null, true);
+        lastTapTime = 0;
+        return;
+      }
+
+      lastTapTime = now;
+
+      // Handle Single Tap with slight debounce so double-tap doesn't glitch play/pause
+      setTimeout(() => {
+        if (Date.now() - lastTapTime >= 270 && lastTapTime !== 0) {
+          if (video.paused) {
+            video.play();
+            feedbackIcon.className = "ph-fill ph-play";
+          } else {
+            video.pause();
+            feedbackIcon.className = "ph-fill ph-pause";
+          }
+
+          feedback.classList.remove('hidden');
+          feedback.classList.remove('feedback-icon');
+          void feedback.offsetWidth; // trigger reflow
+          feedback.classList.add('feedback-icon');
+
+          setTimeout(() => feedback.classList.add('hidden'), 500);
+        }
+      }, 275);
+    }
+
+    // Double Tap Animated Heart Ripple
+    function spawnHeartBurst(e, slide) {
+      const heart = document.createElement('div');
+      heart.className = 'heart-burst text-rose-500 text-7xl';
+      heart.innerHTML = '<i class="ph-fill ph-heart"></i>';
+
+      const rect = slide.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      heart.style.left = `${x}px`;
+      heart.style.top = `${y}px`;
+
+      slide.appendChild(heart);
+      setTimeout(() => heart.remove(), 900);
+    }
+
+    // Like Toggle
+    function toggleLike(btn, e, forceLike = false) {
+      if (e) e.stopPropagation();
+      const icon = btn.querySelector('.heart-icon');
+      const counter = btn.querySelector('.like-counter');
+      let count = parseInt(counter.textContent);
+
+      const isLiked = icon.classList.contains('text-red-500');
+
+      if (!isLiked || forceLike) {
+        icon.classList.remove('ph-bold', 'text-white');
+        icon.classList.add('ph-fill', 'text-red-500');
+        counter.textContent = count + (isLiked ? 0 : 1);
+        counter.classList.add('text-red-400');
+      } else {
+        icon.classList.remove('ph-fill', 'text-red-500');
+        icon.classList.add('ph-bold', 'text-white');
+        counter.textContent = Math.max(0, count - 1);
+        counter.classList.remove('text-red-400');
+      }
+    }
+
+    // Global Mute / Unmute State
+    function toggleGlobalMute() {
+      isGlobalMuted = !isGlobalMuted;
+      const icon = document.getElementById('muteIcon');
+
+      if (isGlobalMuted) {
+        icon.className = 'ph-bold ph-speaker-simple-slash text-lg';
+        showToast('শব্দ বন্ধ (Muted)');
+      } else {
+        icon.className = 'ph-bold ph-speaker-high text-lg text-red-400';
+        showToast('শব্দ চালু (Sound On)');
+      }
+
+      // Apply to all video elements
+      document.querySelectorAll('video').forEach(v => {
+        v.muted = isGlobalMuted;
+      });
+    }
+
+    // Reshuffle to a completely new random video immediately
+    function shuffleNext() {
+      appendNewSlide();
+      currentSlideIndex++;
+      scrollToSlideIndex(currentSlideIndex);
+      showToast('নতুন র্যান্ডম ভিডিও লোড হয়েছে');
+    }
+
+    // Programmatic Scroll to Slide
+    function scrollToSlide(direction) {
+      const targetIndex = currentSlideIndex + direction;
+      if (targetIndex >= 0) {
+        if (targetIndex >= slideElements.length) {
+          appendNewSlide();
+        }
+        scrollToSlideIndex(targetIndex);
+      }
+    }
+
+    function scrollToSlideIndex(index) {
+      if (slideElements[index]) {
+        slideElements[index].scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    // Share / Copy Link
+    function shareVideo(url, id, e) {
+      if (e) e.stopPropagation();
+      if (navigator.share) {
+        navigator.share({
+          title: `Shorts #${id}`,
+          text: `Check out this random video #${id}!`,
+          url: url
+        }).catch(() => copyFallback(url));
+      } else {
+        copyFallback(url);
+      }
+    }
+
+    function copyFallback(text) {
+      const tempInput = document.createElement("input");
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        showToast('ভিডিও লিংক কপি করা হয়েছে!');
+      } catch (err) {
+        showToast('কপি করা যায়নি');
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    // Toast Notification helper
+    let toastTimer = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+
+      toast.classList.remove('opacity-0', '-translate-y-5', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-5', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2200);
+    }
+
+    // Keyboard Arrow navigation (Up/Down) & Spacebar Play/Pause
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        scrollToSlide(1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        scrollToSlide(-1);
+      } else if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        const activeSlide = slideElements[currentSlideIndex];
+        if (activeSlide) {
+          const video = activeSlide.querySelector('video');
+          if (video.paused) video.play();
+          else video.pause();
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleGlobalMute();
+      }
+    });
+
+    // Start App on window load
+    window.onload = function() {
+      initSlides(5);
+    };
+  </script>
+</body>
+</html>
+```
