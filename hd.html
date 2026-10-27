@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full bg-black select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Hd web</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons CDN -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: #000;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Vertical Reels Feed Container */
+    .reels-feed {
+      scroll-snap-type: y mandatory;
+      overflow-y: scroll;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .reels-feed::-webkit-scrollbar {
+      display: none;
+    }
+
+    .reel-item {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      height: 100vh;
+      height: 100dvh;
+      width: 100vw;
+      position: relative;
+    }
+
+    /* Video Rotation & Sizing */
+    .video-canvas-container {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .video-element {
+      transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), width 0.3s ease, height 0.3s ease;
+      transform-origin: center center;
+    }
+
+    /* Rotation styles */
+    .rot-0 {
+      transform: rotate(0deg);
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .rot-90 {
+      transform: rotate(90deg);
+      width: 100vh;
+      height: 100vw;
+      max-width: 100vh;
+      max-height: 100vw;
+      object-fit: contain;
+    }
+
+    .rot-180 {
+      transform: rotate(180deg);
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .rot-270 {
+      transform: rotate(270deg);
+      width: 100vh;
+      height: 100vw;
+      max-width: 100vh;
+      max-height: 100vw;
+      object-fit: contain;
+    }
+
+    /* Ripple Indicator for ±5s Gestures */
+    @keyframes rippleAnim {
+      0% { opacity: 0.9; transform: scale(0.85); }
+      50% { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 0; transform: scale(1.22); }
+    }
+    .ripple-active {
+      animation: rippleAnim 0.45s ease-out forwards;
+    }
+
+    /* Pulsing central play button animation */
+    @keyframes centerPlayFade {
+      0% { transform: scale(0.7); opacity: 0.2; }
+      50% { transform: scale(1.1); opacity: 0.95; }
+      100% { transform: scale(1); opacity: 0.9; }
+    }
+    .center-play-anim {
+      animation: centerPlayFade 0.25s ease-out forwards;
+    }
+
+    /* Player Timeline Scrubber */
+    .scrubber-zone {
+      touch-action: none;
+    }
+    .scrubber-zone:hover .scrub-bar,
+    .scrubber-zone.active .scrub-bar {
+      height: 6px;
+    }
+    .scrubber-zone:hover .scrub-knob,
+    .scrubber-zone.active .scrub-knob {
+      transform: translate(-50%, -50%) scale(1.3);
+      opacity: 1 !important;
+    }
+
+    /* Auto-hide Control Bar */
+    .hud-controls {
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    .hud-controls.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-black flex justify-center items-center">
+
+  <!-- Main Player Container -->
+  <div id="playerRoot" class="relative w-full h-full bg-black overflow-hidden flex flex-col shadow-2xl">
+
+    <!-- Top Minimal Navigation Bar -->
+    <header class="hud-controls absolute top-0 left-0 right-0 z-40 px-4 pt-3 pb-8 flex items-center justify-between pointer-events-none bg-gradient-to-b from-black/85 via-black/40 to-transparent">
+      
+      <!-- Brand & Shuffle Toggle -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <span class="font-extrabold text-white text-base tracking-wide flex items-center gap-1.5 drop-shadow-md">
+          <i class="ph-fill ph-film-strip text-red-500 text-lg"></i>
+          Hd web
+        </span>
+
+        <button 
+          id="shuffleBtn" 
+          onclick="toggleShuffle()" 
+          title="Toggle Shuffle" 
+          class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[11px] font-medium text-white active:scale-95 transition-all shadow-md ml-1">
+          <i class="ph-bold ph-shuffle text-xs text-red-500" id="shuffleIcon"></i>
+          <span id="shuffleText" class="tracking-wide">Shuffle ON</span>
+        </button>
+      </div>
+
+      <!-- Rotation & Fit Controls -->
+      <div class="flex items-center gap-2 pointer-events-auto">
+        <!-- Rotate Orientation Button (0° -> 90° -> 180° -> 270°) -->
+        <button 
+          id="rotateBtn" 
+          onclick="cycleGlobalRotation()" 
+          title="Rotate Video Orientation" 
+          class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-[11px] font-medium text-white active:scale-95 transition-all shadow-md">
+          <i class="ph-bold ph-arrow-clockwise text-xs text-red-500"></i>
+          <span id="rotateAngleLabel">90°</span>
+        </button>
+
+        <!-- Aspect Fit Mode (Contain / Cover) -->
+        <button 
+          id="fitBtn" 
+          onclick="toggleFitMode()" 
+          title="Toggle Fit" 
+          class="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white active:scale-95 transition-all shadow-md">
+          <i class="ph-bold ph-arrows-out text-sm" id="fitIcon"></i>
+        </button>
+      </div>
+
+    </header>
+
+    <!-- Vertical Video Reel Feed -->
+    <main id="reelsFeed" class="reels-feed flex-1 w-full h-full relative">
+      <!-- Video Slides injected via JS -->
+    </main>
+
+    <!-- Side Navigation Arrows (Desktop) -->
+    <div class="hidden lg:flex flex-col gap-3 absolute right-4 top-1/2 -translate-y-1/2 z-40 text-neutral-400">
+      <button onclick="navigateSlide(-1)" class="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 hover:text-white transition flex items-center justify-center shadow-xl active:scale-90" title="Previous Video">
+        <i class="ph-bold ph-caret-up text-xl"></i>
+      </button>
+      <button onclick="navigateSlide(1)" class="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 hover:text-white transition flex items-center justify-center shadow-xl active:scale-90" title="Next Video">
+        <i class="ph-bold ph-caret-down text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-300 bg-neutral-900/95 backdrop-blur-md border border-neutral-800 text-white text-xs px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5">
+      <span id="toastMsg">বিজ্ঞপ্তি</span>
+    </div>
+
+  </div>
+
+  <script>
+    // Configuration & State
+    // Range: B2 to B929 (Total 928 videos)
+    const MIN_ID = 2;
+    const MAX_ID = 929;
+    const BASE_URL = "https://ser4.mydown.biz/myfiless/id/B";
+    const BUFFER_SLIDES = 3;
+
+    let isShuffleOn = true;
+    let isMuted = false;
+    let isCoverFit = false; // default contain for rotated view
+    let globalRotationAngle = 90; // Default rotate 90 degrees as requested
+    let sequentialPointer = MIN_ID;
+    let currentSlideIndex = 0;
+    const slideElements = [];
+    let intersectionObserver = null;
+    const shuffleHistory = [];
+
+    const reelsFeed = document.getElementById('reelsFeed');
+    const playerRoot = document.getElementById('playerRoot');
+
+    // Format Seconds to M:SS or MM:SS
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds) || seconds < 0) return "0:00";
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // Get Next Video ID (B2 - B929)
+    function getNextVideoId() {
+      if (isShuffleOn) {
+        let candidate;
+        let attempts = 0;
+        do {
+          candidate = Math.floor(Math.random() * (MAX_ID - MIN_ID + 1)) + MIN_ID;
+          attempts++;
+        } while (shuffleHistory.includes(candidate) && attempts < 25);
+
+        shuffleHistory.push(candidate);
+        if (shuffleHistory.length > 50) shuffleHistory.shift();
+        return candidate;
+      } else {
+        const id = sequentialPointer;
+        sequentialPointer++;
+        if (sequentialPointer > MAX_ID) sequentialPointer = MIN_ID;
+        return id;
+      }
+    }
+
+    // Direct Video Download
+    function downloadCurrentVideo(videoUrl, videoId) {
+      showToast(`ডাউনলোড শুরু হচ্ছে: B${videoId}.mp4`);
+      const link = document.createElement('a');
+      link.href = videoUrl;
+      link.setAttribute('download', `Hd-web-B${videoId}.mp4`);
+      link.setAttribute('target', '_blank');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Construct Slide Component matching screenshot design
+    function createReelSlide(videoId, index) {
+      const slide = document.createElement('section');
+      slide.className = 'reel-item flex items-center justify-center bg-black overflow-hidden relative';
+      slide.dataset.id = videoId;
+      slide.dataset.index = index;
+
+      const videoUrl = `${BASE_URL}${videoId}.mp4`;
+
+      slide.innerHTML = `
+        <!-- Rotatable Video Container -->
+        <div class="video-canvas-container">
+          <video 
+            class="video-element rot-${globalRotationAngle}"
+            playsinline 
+            webkit-playsinline
+            loop 
+            preload="metadata"
+            ${isMuted ? 'muted' : ''}
+            src="${videoUrl}">
+          </video>
+        </div>
+
+        <!-- Tap Gesture Layer (Left Half: -5s, Right Half: +5s, Single Tap: Show/Hide HUD or Play/Pause) -->
+        <div class="gesture-layer absolute inset-0 z-10 flex">
+          <div class="tap-left w-1/2 h-full cursor-pointer"></div>
+          <div class="tap-right w-1/2 h-full cursor-pointer"></div>
+        </div>
+
+        <!-- Ripple Indicators for Double-Tap Rewind / Fast Forward -->
+        <div class="rewind-ripple absolute left-10 top-1/2 -translate-y-1/2 z-20 hidden flex-col items-center gap-1 pointer-events-none text-white bg-black/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 shadow-2xl">
+          <i class="ph-bold ph-rewind text-2xl text-red-500"></i>
+          <span class="text-[11px] font-bold tracking-wider">-5s</span>
+        </div>
+        <div class="forward-ripple absolute right-10 top-1/2 -translate-y-1/2 z-20 hidden flex-col items-center gap-1 pointer-events-none text-white bg-black/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 shadow-2xl">
+          <i class="ph-bold ph-fast-forward text-2xl text-red-500"></i>
+          <span class="text-[11px] font-bold tracking-wider">+5s</span>
+        </div>
+
+        <!-- Center Big White Play/Pause Button (Matching Screenshot) -->
+        <button class="center-play-btn absolute z-25 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 text-black flex items-center justify-center shadow-2xl transition-all duration-200 active:scale-95 cursor-pointer hidden">
+          <i class="ph-fill ph-play text-2xl md:text-3xl ml-1 text-neutral-900"></i>
+        </button>
+
+        <!-- Loading Spinner -->
+        <div class="spinner absolute inset-0 z-15 flex items-center justify-center bg-black/40 pointer-events-none transition-opacity">
+          <div class="w-10 h-10 border-2 border-white/20 border-t-red-500 rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Floating Scrubber Tooltip Bubble -->
+        <div class="scrub-bubble absolute bottom-14 left-1/2 -translate-x-1/2 z-40 pointer-events-none opacity-0 transition-opacity duration-150 bg-black/90 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-md text-[11px] font-mono text-white shadow-xl">
+          <span class="bubble-time">0:00</span>
+        </div>
+
+        <!-- Full Bottom Player Control Bar (Exact Screenshot Layout) -->
+        <div class="hud-controls bottom-ctrl-bar absolute bottom-0 left-0 right-0 z-30 px-3 pb-3 pt-6 pointer-events-auto bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col gap-1.5 transition-all duration-300">
+          
+          <!-- Middle Controls: Timestamp + Audio, Fullscreen, Menu, Download -->
+          <div class="flex items-center justify-between text-white text-xs px-1">
+            <!-- Left: Time Counter (0:00 / 21:39) -->
+            <div class="flex items-center gap-2 font-mono text-[13px] tracking-tight">
+              <span class="curr-val text-white">0:00</span>
+              <span class="text-neutral-400">/</span>
+              <span class="dur-val text-neutral-400">0:00</span>
+              <span class="text-[10px] text-neutral-500 font-sans ml-1">#B${videoId}</span>
+            </div>
+
+            <!-- Right Controls Matching Screenshot: Speaker, Fullscreen, Options, Download -->
+            <div class="flex items-center gap-3 text-neutral-300">
+              <!-- Audio Mute / Unmute Button -->
+              <button class="btn-mute hover:text-white active:scale-90 transition p-1" title="Mute/Unmute">
+                <i class="ph-bold ${isMuted ? 'ph-speaker-simple-slash' : 'ph-speaker-high'} text-lg"></i>
+              </button>
+
+              <!-- Full Screen Toggle Button (Matches Screenshot icon) -->
+              <button class="btn-fullscreen hover:text-white active:scale-90 transition p-1" title="Fullscreen">
+                <i class="ph-bold ph-corners-out text-lg"></i>
+              </button>
+
+              <!-- Download Button -->
+              <button class="btn-download hover:text-white active:scale-90 transition p-1" title="Download Video">
+                <i class="ph-bold ph-download-simple text-lg"></i>
+              </button>
+
+              <!-- More Options Menu Button -->
+              <button class="btn-more hover:text-white active:scale-90 transition p-1" title="Options">
+                <i class="ph-bold ph-dots-three-vertical text-lg"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bottom Full Scrubber Progress Bar -->
+          <div class="scrubber-zone relative w-full h-4 flex items-center cursor-pointer group">
+            <div class="scrub-bar relative w-full h-[3px] bg-white/30 rounded-full overflow-visible transition-all">
+              <!-- Progress Fill -->
+              <div class="scrub-fill h-full bg-white rounded-full w-0 pointer-events-none relative"></div>
+              <!-- Draggable Knob / Handle -->
+              <div class="scrub-knob absolute top-1/2 left-0 w-3 h-3 rounded-full bg-white shadow-md pointer-events-none transform -translate-y-1/2 -translate-x-1/2 transition-transform"></div>
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      // References
+      const video = slide.querySelector('video');
+      const tapLeft = slide.querySelector('.tap-left');
+      const tapRight = slide.querySelector('.tap-right');
+      const centerPlayBtn = slide.querySelector('.center-play-btn');
+      const spinner = slide.querySelector('.spinner');
+      const rewindRipple = slide.querySelector('.rewind-ripple');
+      const forwardRipple = slide.querySelector('.forward-ripple');
+      const currVal = slide.querySelector('.curr-val');
+      const durVal = slide.querySelector('.dur-val');
+      const btnMute = slide.querySelector('.btn-mute');
+      const btnFullscreen = slide.querySelector('.btn-fullscreen');
+      const btnDownload = slide.querySelector('.btn-download');
+      const btnMore = slide.querySelector('.btn-more');
+      const scrubberZone = slide.querySelector('.scrubber-zone');
+      const scrubFill = slide.querySelector('.scrub-fill');
+      const scrubKnob = slide.querySelector('.scrub-knob');
+      const scrubBubble = slide.querySelector('.scrub-bubble');
+      const bubbleTime = slide.querySelector('.bubble-time');
+      const hudElements = slide.querySelectorAll('.hud-controls');
+
+      let isDragging = false;
+      let leftTapTimer = null;
+      let rightTapTimer = null;
+      let hudHideTimer = null;
+
+      // Reset auto-hide timer for controls
+      function resetHudTimer() {
+        hudElements.forEach(el => el.classList.remove('is-hidden'));
+        document.querySelectorAll('header.hud-controls').forEach(el => el.classList.remove('is-hidden'));
+
+        clearTimeout(hudHideTimer);
+        if (!video.paused && !isDragging) {
+          hudHideTimer = setTimeout(() => {
+            hudElements.forEach(el => el.classList.add('is-hidden'));
+            document.querySelectorAll('header.hud-controls').forEach(el => el.classList.add('is-hidden'));
+          }, 3500);
+        }
+      }
+
+      // Update Playback Timeline
+      function updateProgress() {
+        if (!isDragging && video.duration) {
+          const pct = (video.currentTime / video.duration) * 100;
+          scrubFill.style.width = `${pct}%`;
+          scrubKnob.style.left = `${pct}%`;
+          currVal.textContent = formatTime(video.currentTime);
+          durVal.textContent = formatTime(video.duration);
+        }
+      }
+
+      video.addEventListener('timeupdate', updateProgress);
+      video.addEventListener('loadedmetadata', () => {
+        durVal.textContent = formatTime(video.duration);
+      });
+      video.addEventListener('canplay', () => spinner.classList.add('hidden'));
+      video.addEventListener('waiting', () => spinner.classList.remove('hidden'));
+      video.addEventListener('playing', () => {
+        spinner.classList.add('hidden');
+        centerPlayBtn.classList.add('hidden');
+        resetHudTimer();
+      });
+      video.addEventListener('pause', () => {
+        centerPlayBtn.classList.remove('hidden');
+        centerPlayBtn.classList.add('center-play-anim');
+        resetHudTimer();
+      });
+
+      // Play/Pause Action
+      function togglePlayPause() {
+        if (video.paused) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+        resetHudTimer();
+      }
+
+      centerPlayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePlayPause();
+      });
+
+      // Quick Seek (±5s)
+      function seekBy(delta, rippleEl) {
+        if (!video.duration) return;
+        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta));
+        updateProgress();
+        resetHudTimer();
+
+        if (rippleEl) {
+          rippleEl.classList.remove('hidden', 'ripple-active');
+          void rippleEl.offsetWidth;
+          rippleEl.classList.add('ripple-active');
+          setTimeout(() => rippleEl.classList.add('hidden'), 450);
+        }
+      }
+
+      // Double-Tap Gestures on Left/Right Halves
+      tapLeft.addEventListener('click', (e) => {
+        const rect = slide.getBoundingClientRect();
+        if (e.clientY > rect.bottom - 60) return; // ignore near bottom bar
+
+        if (leftTapTimer) {
+          clearTimeout(leftTapTimer);
+          leftTapTimer = null;
+          seekBy(-5, rewindRipple);
+        } else {
+          leftTapTimer = setTimeout(() => {
+            togglePlayPause();
+            leftTapTimer = null;
+          }, 240);
+        }
+      });
+
+      tapRight.addEventListener('click', (e) => {
+        const rect = slide.getBoundingClientRect();
+        if (e.clientY > rect.bottom - 60) return;
+
+        if (rightTapTimer) {
+          clearTimeout(rightTapTimer);
+          rightTapTimer = null;
+          seekBy(5, forwardRipple);
+        } else {
+          rightTapTimer = setTimeout(() => {
+            togglePlayPause();
+            rightTapTimer = null;
+          }, 240);
+        }
+      });
+
+      // Audio Mute Toggle
+      btnMute.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isMuted = !isMuted;
+        document.querySelectorAll('video').forEach(v => v.muted = isMuted);
+        document.querySelectorAll('.btn-mute i').forEach(icon => {
+          icon.className = `ph-bold ${isMuted ? 'ph-speaker-simple-slash' : 'ph-speaker-high'} text-lg`;
+        });
+        showToast(isMuted ? 'সাউন্ড মিউট (Muted)' : 'সাউন্ড আনমিউট (Sound ON)');
+      });
+
+      // Fullscreen Button
+      btnFullscreen.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFullScreen();
+      });
+
+      // Download Button
+      btnDownload.addEventListener('click', (e) => {
+        e.stopPropagation();
+        downloadCurrentVideo(videoUrl, videoId);
+      });
+
+      // More Options (Cycle Speed & Info)
+      btnMore.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const speeds = [1, 1.25, 1.5, 2, 0.75];
+        const nextSpeed = speeds[(speeds.indexOf(video.playbackRate) + 1) % speeds.length];
+        video.playbackRate = nextSpeed;
+        showToast(`প্লেব্যাক স্পিড: ${nextSpeed}x`);
+      });
+
+      // Scrubber Dragging / Seeking
+      function applyScrub(clientX) {
+        if (!video.duration) return;
+        const rect = scrubberZone.getBoundingClientRect();
+        const offsetX = Math.max(0, Math.min(clientX - rect.left, rect.width));
+        const fraction = offsetX / rect.width;
+
+        scrubFill.style.width = `${fraction * 100}%`;
+        scrubKnob.style.left = `${fraction * 100}%`;
+
+        const targetTime = fraction * video.duration;
+        video.currentTime = targetTime;
+
+        bubbleTime.textContent = formatTime(targetTime);
+        currVal.textContent = formatTime(targetTime);
+        scrubBubble.style.left = `${offsetX}px`;
+      }
+
+      function startScrubbing(e) {
+        if (!video.duration) return;
+        isDragging = true;
+        scrubberZone.classList.add('active');
+        scrubBubble.classList.remove('opacity-0');
+        resetHudTimer();
+
+        const startX = e.touches ? e.touches[0].clientX : e.clientX;
+        applyScrub(startX);
+
+        function onMove(evt) {
+          if (!isDragging) return;
+          const currentX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+          applyScrub(currentX);
+        }
+
+        function onEnd() {
+          isDragging = false;
+          scrubberZone.classList.remove('active');
+          scrubBubble.classList.add('opacity-0');
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onEnd);
+          window.removeEventListener('touchmove', onMove);
+          window.removeEventListener('touchend', onEnd);
+          resetHudTimer();
+        }
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', onMove, { passive: true });
+        window.addEventListener('touchend', onEnd);
+      }
+
+      scrubberZone.addEventListener('mousedown', startScrubbing);
+      scrubberZone.addEventListener('touchstart', startScrubbing, { passive: true });
+
+      return slide;
+    }
+
+    // Fullscreen Handler
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        playerRoot.requestFullscreen?.() || playerRoot.webkitRequestFullscreen?.();
+        showToast('ফুলস্ক্রিন মোড চালু');
+      } else {
+        document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+        showToast('ফুলস্ক্রিন বন্ধ');
+      }
+    }
+
+    // Cycle Video Orientation (0° -> 90° -> 180° -> 270°)
+    function cycleGlobalRotation() {
+      const angles = [0, 90, 180, 270];
+      const nextIdx = (angles.indexOf(globalRotationAngle) + 1) % angles.length;
+      globalRotationAngle = angles[nextIdx];
+
+      document.getElementById('rotateAngleLabel').textContent = `${globalRotationAngle}°`;
+
+      // Update all video elements
+      document.querySelectorAll('.video-element').forEach(v => {
+        v.className = `video-element rot-${globalRotationAngle} ${isCoverFit ? 'object-cover' : 'object-contain'}`;
+      });
+
+      showToast(`ঘূর্ণন কোণ: ${globalRotationAngle}°`);
+    }
+
+    // Toggle Aspect Fit (Contain vs Cover)
+    function toggleFitMode() {
+      isCoverFit = !isCoverFit;
+      const fitIcon = document.getElementById('fitIcon');
+
+      if (isCoverFit) {
+        fitIcon.className = 'ph-bold ph-arrows-in text-sm text-red-500';
+        showToast('জুম মোড (Cover)');
+      } else {
+        fitIcon.className = 'ph-bold ph-arrows-out text-sm text-white';
+        showToast('ফিট মোড (Contain)');
+      }
+
+      document.querySelectorAll('.video-element').forEach(v => {
+        if (isCoverFit) {
+          v.classList.remove('object-contain');
+          v.classList.add('object-cover');
+        } else {
+          v.classList.remove('object-cover');
+          v.classList.add('object-contain');
+        }
+      });
+    }
+
+    // Toggle Shuffle Mode
+    function toggleShuffle() {
+      isShuffleOn = !isShuffleOn;
+      const text = document.getElementById('shuffleText');
+      const icon = document.getElementById('shuffleIcon');
+
+      if (isShuffleOn) {
+        text.textContent = 'Shuffle ON';
+        icon.className = 'ph-bold ph-shuffle text-xs text-red-500';
+        showToast('র্যান্ডম শাফেল চালু (Shuffle ON)');
+      } else {
+        text.textContent = 'Shuffle OFF';
+        icon.className = 'ph-bold ph-list-numbers text-xs text-neutral-400';
+        const activeSlide = slideElements[currentSlideIndex];
+        if (activeSlide) {
+          sequentialPointer = parseInt(activeSlide.dataset.id) + 1;
+        }
+        showToast('ধারাবাহিক প্লেব্যাক (Sequential ON)');
+      }
+    }
+
+    // Append Slide to Feed
+    function appendSlide() {
+      const nextId = getNextVideoId();
+      const slide = createReelSlide(nextId, slideElements.length);
+      reelsFeed.appendChild(slide);
+      slideElements.push(slide);
+
+      if (intersectionObserver) {
+        intersectionObserver.observe(slide);
+      }
+    }
+
+    // IntersectionObserver to Auto-Play & Manage Active Video
+    function setupObserver() {
+      if (intersectionObserver) intersectionObserver.disconnect();
+
+      intersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const video = entry.target.querySelector('video');
+          const index = parseInt(entry.target.dataset.index);
+
+          if (entry.isIntersecting) {
+            currentSlideIndex = index;
+            video.muted = isMuted;
+            const playPromise = video.play();
+            if (playPromise !== undefined) playPromise.catch(() => {});
+
+            // Auto buffer more videos
+            if (currentSlideIndex >= slideElements.length - 2) {
+              appendSlide();
+              appendSlide();
+            }
+          } else {
+            video.pause();
+            video.currentTime = 0;
+          }
+        });
+      }, {
+        root: reelsFeed,
+        threshold: 0.65
+      });
+
+      slideElements.forEach(s => intersectionObserver.observe(s));
+    }
+
+    // Slide Navigation
+    function navigateSlide(direction) {
+      const targetIndex = currentSlideIndex + direction;
+      if (targetIndex >= 0) {
+        if (targetIndex >= slideElements.length) appendSlide();
+        if (slideElements[targetIndex]) {
+          slideElements[targetIndex].scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      const activeSlide = slideElements[currentSlideIndex];
+      const video = activeSlide ? activeSlide.querySelector('video') : null;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateSlide(1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateSlide(-1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (video) video.currentTime = Math.max(0, video.currentTime - 5);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (video) video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+      } else if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (video) {
+          if (video.paused) video.play();
+          else video.pause();
+        }
+      } else if (e.key === 'r' || e.key === 'R') {
+        cycleGlobalRotation();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      } else if (e.key === 's' || e.key === 'S') {
+        toggleShuffle();
+      } else if (e.key === 'm' || e.key === 'M') {
+        isMuted = !isMuted;
+        document.querySelectorAll('video').forEach(v => v.muted = isMuted);
+        showToast(isMuted ? 'Muted' : 'Unmuted');
+      }
+    });
+
+    // Toast Notification Utility
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+
+      toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2000);
+    }
+
+    // Initialize on window load
+    window.onload = function() {
+      for (let i = 0; i < BUFFER_SLIDES; i++) {
+        appendSlide();
+      }
+      setupObserver();
+    };
+  </script>
+</body>
+</html>
+```
