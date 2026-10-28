@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>bdeytv-live — Premium Live TV</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090c15;
+      --card-bg: rgba(18,24,40,0.7);
+      --card-border: rgba(255,255,255,0.08);
+      --accent: #00f2fe;
+      --accent-glow: rgba(0,242,254,0.35);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg) radial-gradient(circle at 15% 15%, rgba(0,242,254,0.06), transparent 30%) no-repeat,
+                  radial-gradient(circle at 85% 85%, rgba(79,70,229,0.08), transparent 30%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+    header {
+      padding: 0.6rem 1.2rem;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(9,12,21,0.95);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 0.55rem; text-decoration: none; color: inherit; }
+    .brand img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; border: 1px solid var(--card-border); background: #111; }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .player-anchor { width: 100%; max-width: 900px; margin: 0.6rem auto 0.2rem; padding: 0 0.8rem; }
+    .player-aspect-keeper {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    }
+    .player-box {
+      position: absolute;
+      inset: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width .25s ease, height .25s ease, border-radius .25s ease;
+      touch-action: none;
+    }
+    .player-box.mini {
+      position: fixed;
+      width: 290px;
+      height: 163px;
+      z-index: 999;
+      border-radius: 10px;
+      border: 1px solid var(--accent);
+      box-shadow: 0 12px 35px rgba(0,0,0,0.9), 0 0 15px var(--accent-glow);
+      cursor: grab;
+      user-select: none;
+    }
+    .player-box.mini:active { cursor: grabbing; }
+    @media (max-width: 600px) { .player-box.mini { width: 185px; height: 104px; } }
+    video { width: 100%; height: 100%; object-fit: contain; background: #000; pointer-events: none; }
+    .error-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(9,12,21,0.94);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1rem;
+      z-index: 25;
+    }
+    .error-overlay.active { display: flex; }
+    .error-title { font-size: 0.82rem; font-weight: 700; color: #ff6b6b; margin-bottom: 0.25rem; }
+    .error-desc { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.6rem; max-width: 260px; }
+    .retry-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .player-header-bar, .player-controls-bar {
+      position: absolute;
+      left: 0; right: 0;
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      pointer-events: auto;
+    }
+    .player-header-bar { top: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent); font-size: 0.78rem; font-weight: 600; }
+    .player-controls-bar { bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.85), transparent); }
+    .icon-btn {
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.22);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+      transition: all 0.2s ease;
+    }
+    .icon-btn svg { width: 17px; height: 17px; fill: #fff; }
+    .icon-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .icon-btn:hover svg { fill: #000; }
+    .close-btn {
+      background: rgba(255,255,255,0.25);
+      border: none;
+      color: #fff;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .player-box.mini .close-btn { display: flex; }
+    .filter-panel {
+      padding: 0.5rem 0.8rem;
+      display: grid;
+      grid-template-columns: 1fr 160px;
+      gap: 0.5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    @media (max-width: 500px) { .filter-panel { grid-template-columns: 1fr; } }
+    .search-box { position: relative; }
+    .search-box input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 0.45rem 0.75rem 0.45rem 2.1rem;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.8rem;
+      outline: none;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+    .search-box svg { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; fill: var(--muted); }
+    .select-dropdown {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.45rem 0.65rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      outline: none;
+      width: 100%;
+    }
+    .catalog-wrapper { padding: 0.4rem 0.8rem; flex: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 0.5rem;
+    }
+    @media (max-width: 600px) { .grid-container { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 0.4rem; } }
+    .channel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.5rem 0.35rem 0.45rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      transition: all .18s ease;
+      min-height: 82px;
+      justify-content: center;
+    }
+    .channel-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .channel-card.active-card { border-color: var(--accent); background: rgba(0,242,254,0.08); box-shadow: 0 0 10px var(--accent-glow); }
+    .logo-box { width: 100%; height: 34px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.3rem; }
+    .logo-box img { max-width: 65px; max-height: 32px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)); }
+    .channel-name { font-size: 0.72rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; line-height: 1.2; margin-bottom: 0.15rem; color: #e2e8f0; }
+    .badge-row { display: flex; gap: 0.2rem; justify-content: center; width: 100%; }
+    .badge {
+      font-size: 0.52rem;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 90%;
+    }
+    .pagination-bar { display: flex; justify-content: center; align-items: center; gap: 0.3rem; padding: 1.5rem 0.5rem; flex-wrap: wrap; }
+    .pg-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.35rem 0.65rem;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .pg-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="brand">
+      <img src="logo.png" onerror="this.src='logo.png'" alt="logo">
+      <div class="brand-title">bdeytv-live</div>
+    </a>
+    <div id="stat-counter" style="font-size: 0.75rem; color: var(--muted); font-weight: 600;">Loading...</div>
+  </header>
+
+  <div class="player-anchor" id="playerAnchor">
+    <div class="player-aspect-keeper">
+      <div class="player-box" id="mainPlayerBox">
+        <div class="player-header-bar">
+          <span id="playingTitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">Select Channel</span>
+          <button class="close-btn" onclick="closePlayer()" title="Close">&times;</button>
+        </div>
+        <video id="tvPlayer" playsinline webkit-playsinline muted></video>
+        <div id="errorOverlay" class="error-overlay">
+          <div class="error-title">⚠️ Stream Offline / Geo-Restricted</div>
+          <div class="error-desc">Channel server offline or blocked. Select another channel.</div>
+          <button class="retry-btn" onclick="retryStreamWithProxy()">Try Proxy Mirror</button>
+        </div>
+        <div class="player-controls-bar">
+          <button class="icon-btn" id="muteBtn" onclick="toggleMute()" title="Mute/Unmute">
+            <svg id="muteIcon" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="toggleFullScreen()" title="Fullscreen">
+            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="filter-panel">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z"/></svg>
+      <input type="text" id="searchInput" placeholder="Search channels...">
+    </div>
+    <select id="catFilter" class="select-dropdown"><option value="">All Genres</option></select>
+  </section>
+
+  <main class="catalog-wrapper">
+    <div id="channelGrid" class="grid-container"></div>
+    <div id="pagination" class="pagination-bar"></div>
+  </main>
+
+  <script>
+    const ITEMS_PER_PAGE = 100;
+    let allChannels = [], filteredChannels = [], currentPage = 1, hls = null, activeChannel = null;
+
+    const $ = id => document.getElementById(id);
+    const video = $('tvPlayer'), playerBox = $('mainPlayerBox'), errorOverlay = $('errorOverlay');
+    const playingTitle = $('playingTitle'), muteIcon = $('muteIcon'), anchor = $('playerAnchor');
+
+    const ICON_MUTED = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+    const ICON_UNMUTED = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+
+    async function init() {
+      const statEl = $('stat-counter');
+      statEl.innerText = "Loading...";
+      let loaded = false;
+
+      try {
+        const res = await fetch('channels.json?nocache=' + Date.now());
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json) && json.length) { allChannels = json; loaded = true; }
+        }
+      } catch (e) {}
+
+      if (!loaded) {
+        try {
+          statEl.innerText = "Syncing IPTV...";
+          const m3u = await (await fetch('https://iptv-org.github.io/iptv/index.m3u')).text();
+          allChannels = parseM3U(m3u);
+        } catch (e) {}
+      }
+
+      if (!allChannels.length) {
+        allChannels = [{ title: "Red Bull TV", logo: "logo.png", category: "Sports", url: "https://rbmn-live.akamaized.net/hls/live/590964/FLN_PB_AND/master.m3u8" }];
+      }
+
+      statEl.innerText = `${allChannels.length} Channels`;
+      populateFilters();
+      applyFilters();
+      if (allChannels.length) playStream(allChannels[0]);
+    }
+
+    function parseM3U(data) {
+      const lines = data.split('\n'), list = [];
+      let cur = null;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('#EXTINF:')) {
+          cur = {
+            title: line.split(',')[1]?.trim() || "TV Channel",
+            logo: line.match(/tvg-logo="([^"]*)"/)?.[1] || "logo.png",
+            category: line.match(/group-title="([^"]*)"/)?.[1] || "General"
+          };
+        } else if (line.startsWith('https://') && cur) {
+          cur.url = line;
+          list.push(cur);
+          cur = null;
+        }
+      }
+      return list;
+    }
+
+    function populateFilters() {
+      const cats = [...new Set(allChannels.map(c => c.category).filter(Boolean))].sort();
+      const el = $('catFilter');
+      el.innerHTML = '<option value="">All Genres</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function applyFilters() {
+      const q = $('searchInput').value.toLowerCase();
+      const cat = $('catFilter').value;
+      filteredChannels = allChannels.filter(c => (!q || c.title?.toLowerCase().includes(q)) && (!cat || c.category === cat));
+      currentPage = 1;
+      renderGrid();
+    }
+
+    function renderGrid() {
+      const grid = $('channelGrid');
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      const paged = filteredChannels.slice(start, start + ITEMS_PER_PAGE);
+
+      grid.innerHTML = paged.map(ch => `
+        <div class="channel-card ${activeChannel?.url === ch.url ? 'active-card' : ''}" data-url="${ch.url}">
+          <div class="logo-box"><img src="${ch.logo || 'logo.png'}" onerror="this.src='logo.png'" alt="${ch.title}"></div>
+          <div class="channel-name" title="${ch.title}">${ch.title}</div>
+          <div class="badge-row"><span class="badge">${ch.category || 'Live'}</span></div>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.channel-card').forEach((card, idx) => {
+        card.onclick = () => {
+          playStream(paged[idx]);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+      });
+
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const container = $('pagination');
+      container.innerHTML = "";
+      const totalPages = Math.ceil(filteredChannels.length / ITEMS_PER_PAGE);
+      if (totalPages <= 1) return;
+
+      const btn = (txt, p, active = false) => {
+        const b = document.createElement('button');
+        b.className = `pg-btn ${active ? 'active' : ''}`;
+        b.innerText = txt;
+        b.onclick = () => { currentPage = p; renderGrid(); window.scrollTo({ top: 280, behavior: 'smooth' }); };
+        return b;
+      };
+
+      if (currentPage > 1) container.appendChild(btn('«', currentPage - 1));
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, start + 4);
+      for (let i = start; i <= end; i++) container.appendChild(btn(i, i, i === currentPage));
+      if (currentPage < totalPages) container.appendChild(btn('»', currentPage + 1));
+    }
+
+    function playStream(ch, useProxy = false) {
+      activeChannel = ch;
+      errorOverlay.classList.remove('active');
+      playingTitle.innerText = ch.title;
+      renderGrid();
+
+      video.muted = true;
+      muteIcon.innerHTML = ICON_MUTED;
+
+      const streamUrl = useProxy ? `https://corsproxy.io/?url=${encodeURIComponent(ch.url)}` : ch.url;
+
+      if (hls) hls.destroy();
+
+      if (Hls.isSupported()) {
+        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) !useProxy ? playStream(ch, true) : errorOverlay.classList.add('active');
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.play().catch(() => {});
+        video.onerror = () => errorOverlay.classList.add('active');
+      }
+    }
+
+    const retryStreamWithProxy = () => activeChannel && playStream(activeChannel, true);
+    const toggleMute = () => {
+      video.muted = !video.muted;
+      muteIcon.innerHTML = video.muted ? ICON_MUTED : ICON_UNMUTED;
+    };
+
+    function toggleFullScreen() {
+      const fs = video.requestFullscreen || video.webkitRequestFullscreen;
+      const ex = document.exitFullscreen || document.webkitExitFullscreen;
+      (!document.fullscreenElement && !document.webkitFullscreenElement) ? fs?.call(video) : ex?.call(document);
+    }
+
+    function closePlayer() {
+      playerBox.classList.remove('mini');
+      resetMiniplayerPos();
+      if (hls) { hls.destroy(); hls = null; }
+      video.pause();
+      video.src = "";
+      errorOverlay.classList.remove('active');
+      playingTitle.innerText = "Select Channel";
+      activeChannel = null;
+      renderGrid();
+    }
+
+    window.addEventListener('scroll', () => {
+      const rect = anchor.getBoundingClientRect();
+      if (rect.bottom < 60 && activeChannel) {
+        if (!playerBox.classList.contains('mini')) {
+          playerBox.classList.add('mini');
+          if (!playerBox.dataset.customPos) Object.assign(playerBox.style, { bottom: '20px', right: '20px', top: 'auto', left: 'auto' });
+        }
+      } else if (playerBox.classList.contains('mini')) {
+        playerBox.classList.remove('mini');
+        resetMiniplayerPos();
+      }
+    }, { passive: true });
+
+    let isDragging = false, startX, startY, initLeft, initTop;
+    const resetMiniplayerPos = () => {
+      Object.assign(playerBox.style, { top: '', left: '', bottom: '', right: '' });
+      delete playerBox.dataset.customPos;
+    };
+
+    const onDragStart = e => {
+      if (!playerBox.classList.contains('mini') || e.target.closest('.icon-btn, .close-btn, .retry-btn')) return;
+      isDragging = true;
+      const p = e.touches ? e.touches[0] : e;
+      startX = p.clientX; startY = p.clientY;
+      const rect = playerBox.getBoundingClientRect();
+      initLeft = rect.left; initTop = rect.top;
+      Object.assign(playerBox.style, { bottom: 'auto', right: 'auto', left: `${initLeft}px`, top: `${initTop}px` });
+      playerBox.dataset.customPos = 'true';
+    };
+
+    const onDragMove = e => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const p = e.touches ? e.touches[0] : e;
+      const maxLeft = window.innerWidth - playerBox.offsetWidth - 8;
+      const maxTop = window.innerHeight - playerBox.offsetHeight - 8;
+      playerBox.style.left = `${Math.max(8, Math.min(initLeft + p.clientX - startX, maxLeft))}px`;
+      playerBox.style.top = `${Math.max(8, Math.min(initTop + p.clientY - startY, maxTop))}px`;
+    };
+
+    playerBox.addEventListener('mousedown', onDragStart);
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    playerBox.addEventListener('touchstart', onDragStart, { passive: false });
+    window.addEventListener('touchmove', onDragMove, { passive: false });
+    window.addEventListener('touchend', () => isDragging = false);
+
+    $('searchInput').addEventListener('input', applyFilters);
+    $('catFilter').addEventListener('change', applyFilters);
+    window.onload = init;
+  </script>
+</body>
+</html>
