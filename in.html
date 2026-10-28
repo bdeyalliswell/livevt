@@ -317,7 +317,7 @@
       if (!loaded) {
         try {
           statEl.innerText = "Syncing IPTV...";
-          const m3u = await (await fetch('https://iptv-org.github.io/iptv/index.m3u')).text();
+          const m3u = await (await fetch('https://iptv-org.github.io/iptv/countries/in.m3u')).text();
           allChannels = parseM3U(m3u);
         } catch (e) {}
       }
